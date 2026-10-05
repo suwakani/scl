@@ -109,6 +109,9 @@ template<std::size_t S = 12> class QFxi {
 			auto n = std::pow(real(),exp.real());
 			return QFxi<S>(n);
 		}
+		constexpr auto abs() const -> QFxi<S> {
+			return QFxi<S>(std::abs(raw()),0);
+		}
 
 		// operator overloads ---------------------------@/
 		constexpr auto operator<<(const std::size_t amount) const -> QFxi<S> {

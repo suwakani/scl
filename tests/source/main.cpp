@@ -175,6 +175,8 @@ namespace sample_fxi {
 		std::cout << std::format("num: {0} ({1})\n",div_60.real(),1.0 / 60);
 		std::cout << std::format("2 ^ (1/6):       {0}\n",Fxi(2).pow(1.0 / 6).real());
 		std::cout << std::format("(2 ^ (1/6)) ^ 6: {0}\n",Fxi(2).pow(1.0 / 6).pow(6).real());
+		std::cout << std::format("abs(-4): {0}\n", Fxi(-4).abs().real());
+		std::cout << std::format("abs(4):  {0}\n", Fxi(4).abs().real());
 	}
 };
 namespace sample_sclarc {
