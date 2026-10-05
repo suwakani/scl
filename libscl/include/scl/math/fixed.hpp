@@ -170,6 +170,15 @@ template<std::size_t S = 12> class QFxi {
 			return *this;
 		}
 
+		constexpr auto operator++() -> QFxi<S>& {
+			*this = *this + 1;
+			return *this;
+		}
+		constexpr auto operator--() -> QFxi<S>& {
+			*this = *this - 1;
+			return *this;
+		}
+
 		// static fns -----------------------------------@/
 		static constexpr auto cosb(int angle, const QFxi<S> len = 1) -> QFxi<S> {
 			angle &= 0xFFFF;

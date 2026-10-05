@@ -187,6 +187,9 @@ namespace sample_fxi {
 		std::cout << std::format("1 > 1.544:  {0}\n", 1 > Fxi(1.544));
 		std::cout << std::format("1 <= 1.544: {0}\n",1 <= Fxi(1.544));
 		std::cout << std::format("1 >= 1.544: {0}\n",1 >= Fxi(1.544));
+
+		std::cout << std::format("++2: {0}\n",(++Fxi(2)).real());
+		std::cout << std::format("--2: {0}\n",(--Fxi(2)).real());
 	}
 };
 namespace sample_sclarc {
