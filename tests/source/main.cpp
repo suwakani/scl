@@ -177,6 +177,16 @@ namespace sample_fxi {
 		std::cout << std::format("(2 ^ (1/6)) ^ 6: {0}\n",Fxi(2).pow(1.0 / 6).pow(6).real());
 		std::cout << std::format("abs(-4): {0}\n", Fxi(-4).abs().real());
 		std::cout << std::format("abs(4):  {0}\n", Fxi(4).abs().real());
+
+		std::cout << std::format("1.544 > 1.545:  {0}\n",Fxi(1.544) > Fxi(1.545));
+		std::cout << std::format("1.544 < 1.545:  {0}\n",Fxi(1.544) < Fxi(1.545));
+		std::cout << std::format("1.544 >= 1.545: {0}\n",Fxi(1.544) >= Fxi(1.545));
+		std::cout << std::format("1.544 <= 1.545: {0}\n",Fxi(1.544) <= Fxi(1.545));
+
+		std::cout << std::format("1 < 1.544:  {0}\n", 1 < Fxi(1.544));
+		std::cout << std::format("1 > 1.544:  {0}\n", 1 > Fxi(1.544));
+		std::cout << std::format("1 <= 1.544: {0}\n",1 <= Fxi(1.544));
+		std::cout << std::format("1 >= 1.544: {0}\n",1 >= Fxi(1.544));
 	}
 };
 namespace sample_sclarc {

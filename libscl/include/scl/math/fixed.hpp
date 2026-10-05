@@ -113,7 +113,7 @@ template<std::size_t S = 12> class QFxi {
 			return QFxi<S>(std::abs(raw()),0);
 		}
 
-		// operator overloads ---------------------------@/
+		// arithemetic operators ------------------------@/
 		constexpr auto operator<<(const std::size_t amount) const -> QFxi<S> {
 			return mData << amount;
 		}
@@ -136,6 +136,20 @@ template<std::size_t S = 12> class QFxi {
 		constexpr auto operator/(const QFxi<S>& opan) const -> QFxi<S> {
 			int64_t val = (((int64_t)mData) << S) / ((int64_t)opan.raw());
 			return QFxi<S>(val,0);
+		}
+
+		// comparison operators -------------------------@/
+		constexpr auto operator>(const QFxi<S>& opan) const -> bool {
+			return raw() > opan.raw();
+		}
+		constexpr auto operator<(const QFxi<S>& opan) const -> bool {
+			return raw() < opan.raw();
+		}
+		constexpr auto operator>=(const QFxi<S>& opan) const -> bool {
+			return raw() >= opan.raw();
+		}
+		constexpr auto operator<=(const QFxi<S>& opan) const -> bool {
+			return raw() <= opan.raw();
 		}
 
 		// assignment operators -------------------------@/
@@ -190,6 +204,15 @@ template<std::size_t S> constexpr auto operator*(int a, const QFxi<S>& b) { retu
 template<std::size_t S> constexpr auto operator*(double a, const QFxi<S>& b) { return QFxi<S>(a) * b; }
 template<std::size_t S> constexpr auto operator/(int a, const QFxi<S>& b) { return QFxi<S>(a) / b; }
 template<std::size_t S> constexpr auto operator/(double a, const QFxi<S>& b) { return QFxi<S>(a) / b; }
+
+template<std::size_t S> constexpr auto operator<(int a, const QFxi<S>& b) { return QFxi<S>(a) < b; }
+template<std::size_t S> constexpr auto operator<(double a, const QFxi<S>& b) { return QFxi<S>(a) < b; }
+template<std::size_t S> constexpr auto operator>(int a, const QFxi<S>& b) { return QFxi<S>(a) > b; }
+template<std::size_t S> constexpr auto operator>(double a, const QFxi<S>& b) { return QFxi<S>(a) > b; }
+template<std::size_t S> constexpr auto operator<=(int a, const QFxi<S>& b) { return QFxi<S>(a) <= b; }
+template<std::size_t S> constexpr auto operator<=(double a, const QFxi<S>& b) { return QFxi<S>(a) <= b; }
+template<std::size_t S> constexpr auto operator>=(int a, const QFxi<S>& b) { return QFxi<S>(a) >= b; }
+template<std::size_t S> constexpr auto operator>=(double a, const QFxi<S>& b) { return QFxi<S>(a) >= b; }
 
 typedef QFxi<> Fxi;
 

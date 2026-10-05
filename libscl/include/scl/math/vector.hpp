@@ -32,6 +32,10 @@ template<typename T, std::size_t N = 4> class Vec {
 			return mData.at(idx);
 		}
 
+		constexpr auto x() -> T& { return mData[0]; }
+		constexpr auto y() -> T& { return mData[1]; }
+		constexpr auto z() -> T& { static_assert(N > 2); return mData[2]; }
+
 		// misc fns -------------------------------------@/
 		constexpr auto size() const -> std::size_t {
 			return N;
