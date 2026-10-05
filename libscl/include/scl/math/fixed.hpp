@@ -12,7 +12,7 @@ namespace math {
 // --------------------------------------------------------------------------@/
 // fixed-point
 // --------------------------------------------------------------------------@/
-uint32_t sqrti(uint64_t a_nInput) {
+static inline uint32_t sqrti(uint64_t a_nInput) {
 	// we just changed the types to uint64_t and changed one from "1uL << 30".
 	uint64_t op  = a_nInput;
 	uint64_t res = 0;
@@ -188,7 +188,7 @@ template<std::size_t S = 12> class QFxi {
 		}
 		constexpr auto operator--(int) -> QFxi<S> {
 			auto ret = *this;
-			this->operator--();
+			this->operator++();
 			return ret;
 		}
 
