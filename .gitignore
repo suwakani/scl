@@ -5,9 +5,11 @@ tests/workdata/*
 !tests/workdata/.gitkeep
 
 libscl/bin/*
+libscl/bin/*/*
 !libscl/bin/.gitkeep
 
 libscl/workdata/*
 libscl/build/*.o
 libscl/build/*/*.o
+libscl/build/*/*/*.o
 !libscl/workdata/.gitkeep
