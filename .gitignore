@@ -1,3 +1,4 @@
+tests/**/*.o
 tests/bin/*
 !tests/bin/.gitkeep
 
@@ -8,8 +9,6 @@ libscl/bin/*
 libscl/bin/*/*
 !libscl/bin/.gitkeep
 
+libscl/**/*.o
 libscl/workdata/*
-libscl/build/*.o
-libscl/build/*/*.o
-libscl/build/*/*/*.o
 !libscl/workdata/.gitkeep
