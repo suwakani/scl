@@ -188,7 +188,7 @@ template<std::size_t S = 12> class QFxi {
 		}
 		constexpr auto operator--(int) -> QFxi<S> {
 			auto ret = *this;
-			this->operator++();
+			this->operator--();
 			return ret;
 		}
 
