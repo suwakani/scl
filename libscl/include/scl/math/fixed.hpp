@@ -92,10 +92,15 @@ template<std::size_t S = 12> class QFxi {
 			return QFxi<S>(res);
 		}
 		constexpr auto sqrt() const -> QFxi<S> {
-			// NOTE: we can either:
-			// * shift left before, using the num of fractional bits
-			// * shift right after, using HALF amount of fractional bits
-			// the first choice is best, but COULD be prone to overflow.
+			// NOTE:
+			// -  we have to sqrt in a slightly different way, because of the
+			//    fact that, for instance, if using .8 fixed representation,
+			//    sqrt(256) should result in 256, and not 16.
+			// -  to get the proper value, we could either:
+			//    *  shift left before, using the num of fractional bits
+			//    *  shift right after, using HALF amount of fractional bits
+			// -  the first choice is best, but COULD be prone to overflow.
+			//    fortunately, it's fine if we use 64-bit ints.
 			auto input = static_cast<int64_t>(raw()) << S;
 			auto res = scl::math::sqrti(input);
 			return QFxi<S>(res,0);

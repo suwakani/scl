@@ -1,10 +1,10 @@
 #pragma once
 
-#include <vector>
-#include <string>
-#include <cstdint>
 #include <bit>
+#include <cstdint>
 #include <exception>
+#include <string>
+#include <vector>
 
 #include <scl/basis/errhandle.hpp>
 
@@ -196,10 +196,15 @@ class Blob {
 			return *this;
 		}
 
-		static auto from_str(std::string_view str, bool no_terminator=false) -> Blob {
+		static auto from_str(const std::string& str, bool no_terminator=false) -> Blob {
 			Blob strblob;
 			strblob.write_str(str,no_terminator);
 			return strblob;
+		}
+		static auto from_file(const std::string& filename, bool strict=true) -> Blob {
+			Blob bl;
+			bl.file_load(filename,strict);
+			return bl;
 		}
 };
 

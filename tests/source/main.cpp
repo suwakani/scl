@@ -12,7 +12,7 @@
 
 namespace stdfs = std::filesystem;
 namespace sclarc = scl::io::archive;
-using Fxi = scl::math::Fxi;
+using Fxi = scl::math::QFxi<14>;
 
 namespace sample_sdzarc {
 	static void fn_pack() {
@@ -83,16 +83,35 @@ namespace sample_objlist {
 			int mX,mY;
 			int hp;
 			bool alive;
+
+			CUnit() {
+				std::printf("unit %p: constructed!\n",this);
+			}
+			~CUnit() {
+				std::printf("unit %p: deleted!\n",this);
+			}
 	};
 
 	auto start() -> void {
-		scl::pool<CUnit> objpool(200);
+		auto boolstr = [](bool cond) {
+			return cond ? "true" : "false";
+		};
+		scl::Pool<CUnit> objpool(200);
+
+		auto objStat = objpool.add_status();
+		auto objRef = scl::PoolRef(objStat);
+
+		std::printf("objref.get() == objStat.get(): %s\n", boolstr(objRef.get() == objStat->get()));
+		std::printf("objref.expired: %s\n", boolstr(objRef.expired()));
+		objpool.del_status(objStat);
+		std::printf("objref.expired: %s\n", boolstr(objRef.expired()));
 	}
 };
 namespace sample_fxi {
 	auto start() -> void {
 		std::printf("fxi size: S.%zu.%zu\n",Fxi::NumBits-1-Fxi::Shift,Fxi::Shift);
 		std::printf("fxi max:  %lld\n",Fxi::Max);
+		std::printf("fxi min:  %f\n",Fxi(1,0).real());
 		std::printf("fxi sqrt (2)/2: %f (expected: %f)\n",
 			(Fxi(2).sqrt() / 2).real(),
 			std::sqrtf(2.0)/2
@@ -167,8 +186,9 @@ namespace sample_sclarc {
 	static void fn_unpack() {
 		auto record = sclarc::Record::from_file("workdata/out_scl.bin");
 
+		// read file from archive into single file ------@/
 		{ auto file = record->file_open("/script/test/hello.lua");
-			std::cout << std::format("file's name: {0}\n",file.mInfoFile->name());
+			std::cout << std::format("file's name: {0}\n",file.name());
 
 			// send to workdata -------------------------@/
 			file.read(file.filesize()).file_send("workdata/str.txt");
@@ -180,8 +200,8 @@ namespace sample_sclarc {
 };
 
 int main(int argc, const char* argv[]) {
-	sample_sdzarc::fn_pack();
-	sample_sdzarc::fn_unpack();
+//	sample_sdzarc::fn_pack();
+//	sample_sdzarc::fn_unpack();
 
 	sample_objlist::start();
 	sample_fxi::start();

@@ -194,9 +194,13 @@ class RecordFile {
 		auto open(Record& record, const std::string& filename) -> void;
 
 		constexpr auto tell() -> size_t { return mOffset; }
-		constexpr auto filesize() -> size_t {
+		constexpr auto filesize() const -> size_t {
 			SCL_ASSERT_MSG(mInfoFile,"Record %p: no file",this);
 			return mInfoFile->mDataLen;
+		}
+		constexpr auto name() const -> std::string {
+			SCL_ASSERT_MSG(mInfoFile,"Record %p: no file",this);
+			return mInfoFile->name();
 		}
 
 		RecordFile() 
@@ -235,9 +239,9 @@ class Record {
 // ==========================================================================@/
 scl::Blob create_file(const std::string& src_filename);
 static inline Hash create_hash(const std::string& str) {
-	uint64_t hash = 0x811C9DC4;
-	for(std::size_t i=0; i<str.size(); i++) {
-		hash = ((hash ^ static_cast<uint8_t>(str.at(i))) * 0x1000193) & 0xFFFFFFFF;
+	uint64_t hash = 0x811C9DC5;
+	for(const char c : str) {
+		hash = ((hash ^ static_cast<uint8_t>(c)) * 0x1000193) & 0xFFFFFFFF;
 	}
 	return static_cast<Hash>(hash);
 }

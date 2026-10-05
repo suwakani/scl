@@ -250,6 +250,7 @@ auto Record::load_file(const std::string& src_filename, bool strict) -> void {
 	};
 	mFolderRoot = iter_folders(FolderID::Root);
 
+	/*
 	std::function<void(RecordInfo_Folder&,int)> iter_view = [&](RecordInfo_Folder& cur_folder, int depth) {
 		// create new folder ----------------------------@/
 		const std::string fillerchar = "\t";
@@ -272,6 +273,7 @@ auto Record::load_file(const std::string& src_filename, bool strict) -> void {
 		}
 	};
 	iter_view(mFolderRoot,0);
+	*/
 
 	// create file/folder arrays, then mark readonly ----@/
 	mFolderRoot.mark_readonly();

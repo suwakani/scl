@@ -7,12 +7,7 @@ namespace scl {
 auto Blob::file_load(const std::string& filename, bool strict) -> bool {
 	auto file = std::fopen(filename.c_str(),"rb");
 	if(!file) {
-		if(strict) {
-			std::printf("Blob::file_load(): error: unable to load file %s\n",
-				filename.c_str()
-			);
-			std::terminate();
-		}
+		SCL_ASSERT_MSG(!strict,"unable to load file '%s'\n",filename.c_str());
 		return false;
 	}
 	// get file size ----------------------------@/
@@ -30,13 +25,7 @@ auto Blob::file_load(const std::string& filename, bool strict) -> bool {
 auto Blob::file_send(const std::string& filename, bool strict) const -> bool {
 	auto file = std::fopen(filename.c_str(),"wb");
 	if(!file) {
-		if(strict) {
-			std::printf(
-				"Blob::file_send(): error: unable to send to file %s\n",
-				filename.c_str()
-			);
-			std::terminate();
-		}
+		SCL_ASSERT_MSG(!strict,"unable to send to file '%s'\n",filename.c_str());
 		return false;
 	}
 	std::fwrite(mData.data(),sizeof(char),size(),file);
