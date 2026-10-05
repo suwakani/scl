@@ -151,6 +151,9 @@ template<std::size_t S = 12> class QFxi {
 		constexpr auto operator<=(const QFxi<S>& opan) const -> bool {
 			return raw() <= opan.raw();
 		}
+		constexpr auto operator==(const QFxi<S>& opan) const -> bool {
+			return raw() == opan.raw();
+		}
 
 		// assignment operators -------------------------@/
 		constexpr auto operator+=(const QFxi<S>& other) -> QFxi<S>& {
@@ -174,9 +177,19 @@ template<std::size_t S = 12> class QFxi {
 			*this = *this + 1;
 			return *this;
 		}
+		constexpr auto operator++(int) -> QFxi<S> {
+			auto ret = *this;
+			this->operator++();
+			return ret;
+		}
 		constexpr auto operator--() -> QFxi<S>& {
 			*this = *this - 1;
 			return *this;
+		}
+		constexpr auto operator--(int) -> QFxi<S> {
+			auto ret = *this;
+			this->operator--();
+			return ret;
 		}
 
 		// static fns -----------------------------------@/

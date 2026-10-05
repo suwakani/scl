@@ -190,6 +190,10 @@ namespace sample_fxi {
 
 		std::cout << std::format("++2: {0}\n",(++Fxi(2)).real());
 		std::cout << std::format("--2: {0}\n",(--Fxi(2)).real());
+		for(int i=0; i<4; i++,val++) {
+			val++;
+			val--;
+		}
 	}
 };
 namespace sample_sclarc {
