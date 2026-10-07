@@ -38,6 +38,7 @@ template<typename Type> class PoolRef {
 		auto bind(PoolStatus<Type>* status) -> void;
 		auto unbind() -> void;
 		constexpr auto get() -> Type*;
+		constexpr auto del() -> void;
 
 		constexpr auto expired() -> bool { 
 			return mStatus == nullptr;
@@ -56,6 +57,7 @@ template<typename Type> struct PoolStatus {
 	constexpr auto alive() const -> bool { return mAlive; }
 	constexpr auto id() const -> std::size_t { return mID; }
 	constexpr auto get() -> Type*;
+	constexpr auto del() -> void;
 
 	PoolStatus() : mAlive(false),mID(0),mIDNext(0),
 		mPool(NULL),mReflistTail(NULL) {}
@@ -68,8 +70,7 @@ template<typename Type> auto PoolRef<Type>::bind(PoolStatus<Type>* status) -> vo
 	mStatus = status;
 
 	// create link (add to tail, if needed) -------------@/
-	auto tailRef = status->mReflistTail;
-	if(tailRef) {
+	if(auto tailRef = status->mReflistTail) {
 		// this case is used if adding to existing list
 		mLLPrev = tailRef;
 		mLLNext = nullptr;
@@ -97,6 +98,9 @@ template<typename Type> auto PoolRef<Type>::unbind() -> void {
 }
 template<typename Type> constexpr auto PoolRef<Type>::get() -> Type* {
 	return mStatus->get();
+}
+template<typename Type> constexpr auto PoolRef<Type>::del() -> void {
+	mStatus->del();
 }
 
 template <typename Type> class Pool {
@@ -148,14 +152,12 @@ template <typename Type> class Pool {
 		}
 
 		~Pool() {
-			if(mObjects) {
-				std::free(mObjects);
-				mObjects = nullptr;
+			if(mAutoEnable) {
+				if(mObjects) { std::free(mObjects); }
+				if(mStatus) { delete[] mStatus; }
 			}
-			if(mStatus) {
-				delete[] mStatus;
-				mStatus = nullptr;
-			}
+			mObjects = nullptr;
+			mStatus = nullptr;
 
 			mIdxLast = 0;
 			mAliveNow = 0;
@@ -179,6 +181,9 @@ template <typename Type> class Pool {
 			status->mIDNext = mIdxLast;
 			mAliveNow--;
 			mIdxLast = status->mID;
+		}
+		constexpr auto add_ref() -> TypeRef {
+			return TypeRef(add_status());
 		}
 		auto add_status() -> TypeStatus* {
 			// get free object --------------------------@/
@@ -226,6 +231,9 @@ template <typename Type> class Pool {
 
 template<typename Type> constexpr auto PoolStatus<Type>::get() -> Type* {
 	return &mPool->mObjects[mID];
+}
+template<typename Type> constexpr auto PoolStatus<Type>::del() -> void {
+	mPool->del_status(this);
 }
 	
 } // namespace scl

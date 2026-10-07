@@ -80,9 +80,9 @@ namespace sample_sdzarc {
 namespace sample_objlist {
 	class CUnit {
 		public:
-			int mX,mY;
-			int hp;
-			bool alive;
+			int16_t mX,mY;
+			int16_t hp;
+			int16_t alive;
 
 			CUnit() {
 				std::printf("unit %p: constructed!\n",this);
@@ -98,13 +98,26 @@ namespace sample_objlist {
 		};
 		scl::Pool<CUnit> objpool(200);
 
-		auto objStat = objpool.add_status();
-		auto objRef = scl::PoolRef(objStat);
+		// creating and deleting 1 ----------------------@/
+		{
+			auto objStat = objpool.add_status();
+			auto objRef = scl::PoolRef(objStat);
 
-		std::printf("objref.get() == objStat.get(): %s\n", boolstr(objRef.get() == objStat->get()));
-		std::printf("objref.expired: %s\n", boolstr(objRef.expired()));
-		objpool.del_status(objStat);
-		std::printf("objref.expired: %s\n", boolstr(objRef.expired()));
+			std::printf("objref.get() == objStat.get(): %s\n", boolstr(objRef.get() == objStat->get()));
+			std::printf("objref.expired: %s\n", boolstr(objRef.expired()));
+			objpool.del_status(objStat);
+			std::printf("objref.expired: %s\n", boolstr(objRef.expired()));
+		}
+		// creating and deleting multiple ---------------@/
+		std::vector<scl::Pool<CUnit>::TypeRef> reftable;
+		for(int i=0; i<4; i++) {
+			reftable.push_back(objpool.add_ref());
+		}
+		while(!reftable.empty()) {
+			auto ref = reftable.back();
+			ref.del();
+			reftable.pop_back();
+		}
 	}
 };
 namespace sample_fxi {
@@ -187,6 +200,8 @@ namespace sample_fxi {
 		std::cout << std::format("1 > 1.544:  {0}\n", 1 > Fxi(1.544));
 		std::cout << std::format("1 <= 1.544: {0}\n",1 <= Fxi(1.544));
 		std::cout << std::format("1 >= 1.544: {0}\n",1 >= Fxi(1.544));
+		std::cout << std::format("0 == 1.544: {0}\n",0 == Fxi(1.544));
+		std::cout << std::format("0 == 1.544: {0}\n",0.0 == Fxi(1.544));
 
 		std::cout << std::format("++2: {0}\n",(++Fxi(2)).real());
 		std::cout << std::format("--2: {0}\n",(--Fxi(2)).real());

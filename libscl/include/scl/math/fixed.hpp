@@ -112,6 +112,15 @@ template<std::size_t S = 12> class QFxi {
 		constexpr auto abs() const -> QFxi<S> {
 			return QFxi<S>(std::abs(raw()),0);
 		}
+		constexpr auto sign() const -> QFxi<S> {
+			if(*this < 0) return QFxi<S>(-1);
+			if(*this > 0) return QFxi<S>(1);
+			return QFxi<S>(0);
+		}
+		constexpr auto safediv(const QFxi<S>& other) const -> QFxi<S> {
+			if(other == 0) return QFxi<S>(0);
+			return *this / other;
+		}
 
 		// arithemetic operators ------------------------@/
 		constexpr auto operator<<(const std::size_t amount) const -> QFxi<S> {
