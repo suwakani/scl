@@ -124,10 +124,10 @@ template<std::size_t S = 12> class QFxi {
 
 		// arithemetic operators ------------------------@/
 		constexpr auto operator<<(const std::size_t amount) const -> QFxi<S> {
-			return mData << amount;
+			return QFxi<S>(mData << amount,0);
 		}
 		constexpr auto operator>>(const std::size_t amount) const -> QFxi<S> {
-			return mData >> amount;
+			return QFxi<S>(mData >> amount,0);
 		}
 		constexpr auto operator+(const QFxi<S>& other) const -> QFxi<S> {
 			return QFxi<S>(mData + other.raw(),0);
@@ -209,6 +209,9 @@ template<std::size_t S = 12> class QFxi {
 		}
 		static constexpr auto sinb(int angle, const QFxi<S> len = 1) -> QFxi<S> {
 			return cosb(angle + 0x4000,len);
+		}
+		static constexpr auto smallest() -> QFxi<S> {
+			return QFxi<S>(1,0);
 		}
 
 		// misc fns -------------------------------------@/

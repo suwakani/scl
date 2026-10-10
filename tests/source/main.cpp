@@ -80,9 +80,9 @@ namespace sample_sdzarc {
 namespace sample_objlist {
 	class CUnit {
 		public:
-			int16_t mX,mY;
-			int16_t hp;
-			int16_t alive;
+			scl::math::Vec2fxi pos;
+			int32_t hp;
+			int32_t alive;
 
 			CUnit() {
 				std::printf("unit %p: constructed!\n",this);
@@ -96,7 +96,7 @@ namespace sample_objlist {
 		auto boolstr = [](bool cond) {
 			return cond ? "true" : "false";
 		};
-		scl::Pool<CUnit> objpool(200);
+		scl::Pool<CUnit> objpool(2000);
 
 		// creating and deleting 1 ----------------------@/
 		{
@@ -111,13 +111,19 @@ namespace sample_objlist {
 		// creating and deleting multiple ---------------@/
 		std::vector<scl::Pool<CUnit>::TypeRef> reftable;
 		for(int i=0; i<4; i++) {
-			reftable.push_back(objpool.add_ref());
+			auto objRef = objpool.add_ref();
+			reftable.push_back(objRef);
 		}
 		while(!reftable.empty()) {
-			auto ref = reftable.back();
-			ref.del();
+			auto objRef = reftable.back();
+			objRef.lock();
+			objRef.del();
 			reftable.pop_back();
 		}
+		std::cout << std::format("objpool's size: {0}KB(obj) + {1}KB(status)\n",
+			(float)(objpool.max_size() * sizeof(CUnit)) / 1024.0,
+			(float)(objpool.max_size() * sizeof(scl::PoolStatus<CUnit>)) / 1024.0
+		);
 	}
 };
 namespace sample_fxi {
