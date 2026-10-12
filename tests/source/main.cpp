@@ -14,75 +14,14 @@ namespace stdfs = std::filesystem;
 namespace sclarc = scl::io::archive;
 using Fxi = scl::math::QFxi<14>;
 
-namespace sample_sdzarc {
-	static void fn_pack() {
-		std::vector<scl::Blob> filedata_table;
-		std::vector<std::string> filename_table;
-		auto basepath = stdfs::path("../../../guiutil/kappamap/kmap/workdata/sprite/editor/chip");
-		std::printf("foldername: %s\n",basepath.string().c_str());
-		for (const auto & entry : stdfs::recursive_directory_iterator(basepath)) {
-			if(entry.is_regular_file()) {
-				auto path = entry.path().string();
-				auto proxim = stdfs::proximate(entry.path(),basepath);
-				scl::Blob filedata;
-				std::printf("loading file arc::%s\n",proxim.string().c_str());
-				filedata.file_load(path);
-				filedata_table.push_back(filedata);
-				filename_table.push_back(proxim.string());
-			}
-		}
-
-		constexpr size_t pad_size = 256;
-		scl::Blob blob_all;
-		scl::Blob blob_segHeader;
-		scl::Blob blob_segEntry;
-		scl::Blob blob_segName;
-		scl::Blob blob_segData;
-
-		std::puts("writing blobs");
-		for(auto const [index,data] : std::views::enumerate(filedata_table)) {
-			blob_segEntry.write_u32(index);
-			blob_segEntry.write_u32(data.size());
-			blob_segEntry.write_u32(blob_segName.size());
-			blob_segName.write_str(filename_table.at(index));
-			blob_segData.write_blob(data);
-		}
-		std::puts("writing final");
-		blob_segEntry.pad(pad_size);
-		blob_segName.pad(pad_size);
-		blob_segData.pad(pad_size);
-
-		const std::size_t offset_segEntry = pad_size;
-		const std::size_t offset_segName = offset_segEntry + blob_segEntry.size();
-		const std::size_t offset_segData = offset_segName + blob_segName.size();
-		blob_segHeader.write_str("SDA");
-		blob_segHeader.write_u32(offset_segEntry);
-		blob_segHeader.write_u32(offset_segName);
-		blob_segHeader.write_u32(offset_segData);
-		blob_segHeader.pad(pad_size);
-
-
-		blob_all.write_blob(blob_segHeader)
-			.write_blob(blob_segEntry)
-			.write_blob(blob_segName)
-			.write_blob(blob_segData);
-
-		blob_all.file_send("workdata/out.bin");
-		blob_all.compress_full().file_send("workdata/outPacked.bin");
-	}
-	static void fn_unpack() {
-		scl::Blob filedata;
-		filedata.file_load("workdata/outPacked.bin");
-		auto unpacked = filedata.decompress_full();
-		unpacked.file_send("workdata/outUnpacked.bin");
-	}
-};
 namespace sample_objlist {
 	class CUnit {
 		public:
 			scl::math::Vec2fxi pos;
 			int32_t hp;
 			int32_t alive;
+
+			std::array<uint8_t,40> work;
 
 			CUnit() {
 				std::printf("unit %p: constructed!\n",this);
@@ -93,21 +32,8 @@ namespace sample_objlist {
 	};
 
 	auto start() -> void {
-		auto boolstr = [](bool cond) {
-			return cond ? "true" : "false";
-		};
-		scl::Pool<CUnit> objpool(2000);
+		scl::Pool<CUnit> objpool(1000);
 
-		// creating and deleting 1 ----------------------@/
-		{
-			auto objStat = objpool.add_status();
-			auto objRef = scl::PoolRef(objStat);
-
-			std::printf("objref.get() == objStat.get(): %s\n", boolstr(objRef.get() == objStat->get()));
-			std::printf("objref.expired: %s\n", boolstr(objRef.expired()));
-			objpool.del_status(objStat);
-			std::printf("objref.expired: %s\n", boolstr(objRef.expired()));
-		}
 		// creating and deleting multiple ---------------@/
 		std::vector<scl::Pool<CUnit>::TypeRef> reftable;
 		for(int i=0; i<4; i++) {
@@ -240,9 +166,6 @@ namespace sample_sclarc {
 };
 
 int main(int argc, const char* argv[]) {
-//	sample_sdzarc::fn_pack();
-//	sample_sdzarc::fn_unpack();
-
 	sample_objlist::start();
 	sample_fxi::start();
 	sample_sclarc::fn_pack();

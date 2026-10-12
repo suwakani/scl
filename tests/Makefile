@@ -2,7 +2,7 @@
 CXX	:= clang++
 CC	:= clang
 
-CFLAGS := -Wall -Wshadow -Iinclude --std=c++23
+CFLAGS := -Wall -Wshadow -Iinclude --std=c++23 -ffast-math
 CFLAGS += --write-user-dependencies -MP
 CFLAGS += -I../libscl/include
 CFLAGS += -g

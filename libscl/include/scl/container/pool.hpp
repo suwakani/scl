@@ -24,7 +24,7 @@ template<typename Type> class PoolRef {
 		PoolRef<Type>* mLLPrev;
 		PoolRef<Type>* mLLNext;
 
-		auto bind(PoolStatus<Type>* status) -> void;
+		auto bind(PoolStatus<Type>& status) -> void;
 		auto unbind() -> void;
 		constexpr auto get() const -> Type*;
 		constexpr auto del() -> void;
@@ -38,7 +38,7 @@ template<typename Type> class PoolRef {
 		}
 
 		constexpr PoolRef() : mStatus(NULL),mLLPrev(NULL),mLLNext(NULL) {}
-		constexpr PoolRef(PoolStatus<Type>* status) {
+		constexpr PoolRef(PoolStatus<Type>& status) {
 			mStatus = NULL;
 			mLLPrev = NULL;
 			mLLNext = NULL;
@@ -52,11 +52,10 @@ template<typename Type> class PoolRef {
 			mLLPrev = NULL;
 			mLLNext = NULL;
 			if(not other.expired()) {
-				bind(other.mStatus);
+				bind(*other.mStatus);
 			}
 		}
 };
-
 template<typename Type> class PoolStatus {
 	public:
 		uint32_t mAlive;
@@ -73,14 +72,15 @@ template<typename Type> class PoolStatus {
 			mPool(NULL),mReflistTail(NULL) {}
 };
 
-template<typename Type> auto PoolRef<Type>::bind(PoolStatus<Type>* status) -> void {
-	SCL_ASSERT_MSG(status, "ref %p: bind to null!", this);
-	SCL_ASSERT_MSG(status->mAlive, "ref %p: bind to dead pool entry!", this);
-	if(expired()) unbind();
-	mStatus = status;
+template<typename Type> auto PoolRef<Type>::bind(PoolStatus<Type>& status) -> void {
+	SCL_ASSERT_MSG(&status, "ref %p: bind to null!", this);
+	SCL_ASSERT_MSG(status.alive(), "ref %p: bind to dead pool entry!", this);
+	SCL_ASSERT_MSG(&status != mStatus, "ref %p: double-binded to status %p!", this, status);
+	if(!expired()) unbind();
+	mStatus = &status;
 
 	// create link (add to tail, if needed) -------------@/
-	if(auto tailRef = status->mReflistTail) {
+	if(auto tailRef = mStatus->mReflistTail) {
 		// this case is used if adding to existing list
 		mLLPrev = tailRef;
 		mLLNext = nullptr;
@@ -90,7 +90,7 @@ template<typename Type> auto PoolRef<Type>::bind(PoolStatus<Type>* status) -> vo
 		mLLPrev = nullptr;
 		mLLNext = nullptr;
 	}
-	status->mReflistTail = this;
+	mStatus->mReflistTail = this;
 }
 template<typename Type> auto PoolRef<Type>::unbind() -> void {
 	if(mStatus) {
@@ -165,6 +165,15 @@ template <typename Type> class Pool {
 		}
 
 		~Pool() {
+			// delete all objects --------------------------------@/
+			for(size_t i=0; i<max_size(); i++) {
+				auto& status = mStatus[i];
+				if(status.alive()) {
+					del_status(&status);
+				}
+			}
+
+			// deallocate ----------------------------------------@/
 			if(mAutoEnable) {
 				if(mObjects) { std::free(mObjects); }
 				if(mStatus) { delete[] mStatus; }
@@ -177,6 +186,7 @@ template <typename Type> class Pool {
 			mAliveMax = 0;
 		}
 
+		// adding fns -----------------------------------------@/
 		auto del_status(TypeStatus* status) {
 			SCL_ASSERT_MSG(status, "pool %p: attempt to delete NULL status!", this);
 			SCL_ASSERT_MSG(status->mAlive, "pool %p: attempt to delete dead status %p!", this, status);
@@ -196,7 +206,7 @@ template <typename Type> class Pool {
 			mIdxLast = status->mID;
 		}
 		constexpr auto add_ref() -> TypeRef {
-			return TypeRef(add_status());
+			return TypeRef(*add_status());
 		}
 		auto add_status() -> TypeStatus* {
 			// get free object --------------------------@/
@@ -215,6 +225,20 @@ template <typename Type> class Pool {
 			return &status;
 		}
 
+		// list operations ------------------------------------@/
+		auto get_tableAlive() -> std::vector<TypeRef> {
+			size_t limit = size();
+			std::vector<TypeRef> table;
+
+			for(size_t i=0; i<max_size() && table.size() < limit; i++) {
+				auto& status = &mStatus[i];
+				if(status.alive()) {
+					table.push_back(TypeRef(&status));
+				}
+			}
+
+			return table;
+		}
 	private:
 		auto setup() -> void {
 			SCL_ASSERT_MSG(mAliveMax>0,"pool %p: max alive must be > 0",this);
