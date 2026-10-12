@@ -1,4 +1,5 @@
 tests/**/*.o
+tests/**/*.d
 tests/bin/*
 !tests/bin/.gitkeep
 
@@ -10,5 +11,6 @@ libscl/bin/*/*
 !libscl/bin/.gitkeep
 
 libscl/**/*.o
+libscl/**/*.d
 libscl/workdata/*
 !libscl/workdata/.gitkeep
