@@ -12,12 +12,15 @@
 
 namespace stdfs = std::filesystem;
 namespace sclarc = scl::io::archive;
-using Fxi = scl::math::QFxi<14>;
+namespace sclpool = scl::pool;
+using Fxi = scl::math::QFxi<12>;
+using Vec2fxi = scl::math::Vec<Fxi,2>;
+using Vec3fxi = scl::math::Vec<Fxi,3>;
 
 namespace sample_objlist {
 	class CUnit {
 		public:
-			scl::math::Vec2fxi pos;
+			Vec3fxi pos;
 			int32_t hp;
 			int32_t alive;
 
@@ -32,10 +35,11 @@ namespace sample_objlist {
 	};
 
 	auto start() -> void {
-		scl::Pool<CUnit> objpool(1000);
+		sclpool::Manager<CUnit> objpool(1000);
 
 		// creating and deleting multiple ---------------@/
-		std::vector<scl::Pool<CUnit>::TypeRef> reftable;
+		std::vector<sclpool::Manager<CUnit>::TypeRef> reftable;
+
 		for(int i=0; i<4; i++) {
 			auto objRef = objpool.add_ref();
 			reftable.push_back(objRef);
@@ -46,17 +50,26 @@ namespace sample_objlist {
 			objRef.del();
 			reftable.pop_back();
 		}
+
+		auto objRef_a = objpool.add_ref();
+		auto objRef_b = objpool.add_ref();
+
+		std::swap(objRef_a,objRef_b);
+
+		std::cout << std::format("objRef_a: {0}\n", objRef_a.to_str());
+		std::cout << std::format("objRef_b: {0}\n", objRef_b.to_str());
+
 		std::cout << std::format("objpool's size: {0}KB(obj) + {1}KB(status)\n",
 			(float)(objpool.max_size() * sizeof(CUnit)) / 1024.0,
-			(float)(objpool.max_size() * sizeof(scl::PoolStatus<CUnit>)) / 1024.0
+			(float)(objpool.max_size() * sizeof(sclpool::Status<CUnit>)) / 1024.0
 		);
 	}
 };
 namespace sample_fxi {
 	auto start() -> void {
-		std::printf("fxi size: S.%zu.%zu\n",Fxi::NumBits-1-Fxi::Shift,Fxi::Shift);
-		std::printf("fxi max:  %lld\n",Fxi::Max);
-		std::printf("fxi min:  %f\n",Fxi(1,0).real());
+		std::cout << std::format("fxi size: S.{0}.{1}\n",Fxi::NumBits-1-Fxi::Shift,Fxi::Shift);
+		std::cout << std::format("fxi max:  {0}\n",Fxi::Max);
+		std::cout << std::format("fxi min:  {0}\n",Fxi::smallest().real());
 		std::printf("fxi sqrt (2)/2: %f (expected: %f)\n",
 			(Fxi(2).sqrt() / 2).real(),
 			std::sqrtf(2.0)/2
@@ -141,6 +154,10 @@ namespace sample_fxi {
 			val++;
 			val--;
 		}
+
+		Vec2fxi v { 3,4 };
+		std::cout << std::format("v:     {0}\n", v.to_str());
+		std::cout << std::format("v.len: {0}\n", v.magnitude().real());
 	}
 };
 namespace sample_sclarc {

@@ -72,12 +72,11 @@ template<typename T, std::size_t N = 4> class Vec {
 			}
 
 			// specialization for fixed-point types ------@/
-			if constexpr (std::is_same<T,Fxi>::value) {
+			if constexpr (std::is_base_of<_QFxi_base,T>::value) {
 				return res.sqrt();
 			} else {
 				return std::sqrt(res);
 			}
-			return res;
 		}
 		constexpr auto distance(const Vec<T,N>& other) const ->  T {
 			return (other - *this).magnitude();
@@ -146,7 +145,7 @@ template<typename T, std::size_t N = 4> class Vec {
 		auto to_str() const -> std::string {
 			std::string str = "[ ";
 			for(std::size_t i=0; i<N; i++) {
-				if constexpr(std::is_same<T,Fxi>::value) {
+				if constexpr (std::is_base_of<_QFxi_base,T>::value) {
 					str += std::to_string(mData[i].real());
 				} else {
 					str += std::to_string(mData[i]);

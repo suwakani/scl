@@ -1,34 +1,52 @@
-#pragma once
-
+// ==========================================================================@/
+//                                                                           @/
+// -- object pool system --------------------------------------------------- @/
+//                                                                           @/
+// ==========================================================================@/
 /*
-	*	unlike previous implementations, each PoolStatus will hold a list of
+	*	unlike previous implementations, each Status will hold a list of
 		pointers to weak references. you may use this to safely deal with
 		references to objects in the pool.
+
+	*	this also means that the recommended usage of the library is to create
+		an object & an accompanying reference via the `Manager::add_ref()`
+		function, and then use the lock() funciton to safely get the object
+		from the reference. this allows you to deal with objects from a pool
+		without having to worry about pointers to dead objects.
+
 	*	to add an object:
-			auto objRef = pool.add_ref();
-			auto obj = objRef.lock();
+			auto objRef = pool.add_ref();  // <- this is the object reference!
+			auto obj = objRef.lock();      // <- this is the actual object!
 */
-
-#include <cstdint>
+#pragma once
 #include <scl/basis/errhandle.hpp>
-
+#include <cstdint>
+#include <format>
+// ------------------------------------------------------@/
 namespace scl {
+namespace pool {
+// ------------------------------------------------------@/
+template<typename Type> class Ref;
+template<typename Type> class Status;
+template<typename Type> class Manager;
 
-template<typename Type> class Pool;
-template<typename Type> class PoolRef;
-template<typename Type> class PoolStatus;
-
-template<typename Type> class PoolRef {
+// ==========================================================================@/
+//                                                                           @/
+// -- Ref & Status --------------------------------------------------------- @/
+//                                                                           @/
+// ==========================================================================@/
+template<typename Type> class Ref {
 	public:
-		PoolStatus<Type>* mStatus;
-		PoolRef<Type>* mLLPrev;
-		PoolRef<Type>* mLLNext;
+		Ref<Type>* mLLPrev;
+		Ref<Type>* mLLNext;
+		Status<Type>* mStatus;
 
-		auto bind(PoolStatus<Type>& status) -> void;
+		// modifiers ------------------------------------------@/
+		auto bind(Status<Type>& status) -> void;
 		auto unbind() -> void;
-		constexpr auto get() const -> Type*;
 		constexpr auto del() -> void;
 
+		// observers ------------------------------------------@/
 		constexpr auto expired() const -> bool { 
 			return mStatus == nullptr;
 		}
@@ -36,18 +54,21 @@ template<typename Type> class PoolRef {
 			SCL_ASSERT_MSG(not expired(), "ref %p: attempted to lock null ref!", this);
 			return get();
 		}
+		constexpr auto get() const -> Type*;
 
-		constexpr PoolRef() : mStatus(NULL),mLLPrev(NULL),mLLNext(NULL) {}
-		constexpr PoolRef(PoolStatus<Type>& status) {
+		// constructors ---------------------------------------@/
+		constexpr Ref() : mStatus(NULL),mLLPrev(NULL),mLLNext(NULL) {
+		}
+		constexpr Ref(Status<Type>& status) {
 			mStatus = NULL;
 			mLLPrev = NULL;
 			mLLNext = NULL;
 			bind(status);
 		}
-		constexpr ~PoolRef() {
+		constexpr ~Ref() {
 			unbind();
 		}
-		constexpr PoolRef(const PoolRef<Type>& other) {
+		constexpr Ref(const Ref<Type>& other) {
 			mStatus = NULL;
 			mLLPrev = NULL;
 			mLLNext = NULL;
@@ -55,24 +76,49 @@ template<typename Type> class PoolRef {
 				bind(*other.mStatus);
 			}
 		}
+
+		auto operator=(const Ref<Type>& other) -> Ref<Type>& {
+			if(not other.expired()) {
+				bind(*other.mStatus);
+			}
+			return *this;
+		}
+
+		// misc -----------------------------------------------@/
+		auto to_str() const -> std::string {
+			return std::format("Ref(@{0:X})[ status={1:X}, prev={2:X}, next={3:X} ]",
+				(size_t)this,(size_t)mStatus,(size_t)mLLPrev,(size_t)mLLNext
+			);
+		}
 };
-template<typename Type> class PoolStatus {
+template<typename Type> class Status {
 	public:
 		uint32_t mAlive;
 		uint16_t mID,mIDNext;
-		Pool<Type>* mPool;
-		PoolRef<Type>* mReflistTail;
+		Manager<Type>* mManager;
+		Ref<Type>* mReflistTail;
 
+		// observers ------------------------------------------@/
 		constexpr auto alive() const -> bool { return mAlive; }
 		constexpr auto id() const -> std::size_t { return mID; }
 		constexpr auto get() const -> Type*;
-		constexpr auto del() -> void;
 
-		PoolStatus() : mAlive(false),mID(0),mIDNext(0),
-			mPool(NULL),mReflistTail(NULL) {}
+		// modifiers ------------------------------------------@/
+		constexpr auto del() -> void;
+		constexpr auto reflist_clear() -> void;
+
+		// constructors ---------------------------------------@/
+		Status() : mAlive(false),mID(0),mIDNext(0),
+			mManager(NULL),mReflistTail(NULL) {}
 };
 
-template<typename Type> auto PoolRef<Type>::bind(PoolStatus<Type>& status) -> void {
+// reference structure's methods ------------------------@/
+template<typename Type> auto Ref<Type>::bind(Status<Type>& status) -> void {
+	/*
+		* we should NOT be able to bind a reference twice to the same object.
+		* we should also only be able to bind if not expired. if this ref is
+		  already binded, it should unbind before re-binding.
+	*/
 	SCL_ASSERT_MSG(&status, "ref %p: bind to null!", this);
 	SCL_ASSERT_MSG(status.alive(), "ref %p: bind to dead pool entry!", this);
 	SCL_ASSERT_MSG(&status != mStatus, "ref %p: double-binded to status %p!", this, status);
@@ -92,7 +138,7 @@ template<typename Type> auto PoolRef<Type>::bind(PoolStatus<Type>& status) -> vo
 	}
 	mStatus->mReflistTail = this;
 }
-template<typename Type> auto PoolRef<Type>::unbind() -> void {
+template<typename Type> auto Ref<Type>::unbind() -> void {
 	if(mStatus) {
 		if(mStatus->mReflistTail == this) {
 			mStatus->mReflistTail = mLLPrev;
@@ -106,20 +152,37 @@ template<typename Type> auto PoolRef<Type>::unbind() -> void {
 	mLLNext = nullptr;
 	mStatus = nullptr;
 }
-template<typename Type> constexpr auto PoolRef<Type>::get() const -> Type* {
+template<typename Type> constexpr auto Ref<Type>::get() const -> Type* {
 	return mStatus->get();
 }
-template<typename Type> constexpr auto PoolRef<Type>::del() -> void {
+template<typename Type> constexpr auto Ref<Type>::del() -> void {
 	mStatus->del();
 }
+// status structure's methods ---------------------------@/
+template<typename Type> constexpr auto Status<Type>::get() const -> Type* {
+	return &mManager->mTableObject[mID];
+}
+template<typename Type> constexpr auto Status<Type>::del() -> void {
+	mManager->del_status(this);
+}
+template<typename Type> constexpr auto Status<Type>::reflist_clear() -> void {
+	while(mReflistTail) {
+		mReflistTail->unbind();
+	}
+}
 
-template <typename Type> class Pool {
+// ==========================================================================@/
+//                                                                           @/
+// -- Manager -------------------------------------------------------------- @/
+//                                                                           @/
+// ==========================================================================@/
+template <typename Type> class Manager {
 	public:
-		using TypeRef = PoolRef<Type>;
-		using TypeStatus = PoolStatus<Type>;
+		using TypeRef = Ref<Type>;
+		using TypeStatus = Status<Type>;
 	public:
-		Type* mObjects;
-		TypeStatus* mStatus;
+		Type* mTableObject;
+		TypeStatus* mTableStatus;
 		bool mAutoEnable;
 		size_t mAliveNow;
 		size_t mAliveMax;
@@ -129,45 +192,45 @@ template <typename Type> class Pool {
 		constexpr auto max_size() const -> size_t { return mAliveMax; }
 
 		// construct/destructor -------------------------@/
-		Pool() {
-			mObjects = nullptr;
-			mStatus = nullptr;
-			mAutoEnable = false;
+		Manager() {
+			mTableObject = nullptr;
+			mTableStatus = nullptr;
 			mIdxLast = 0;
 			mAliveNow = 0;
 			mAliveMax = 0;
-		}
-		Pool(size_t max) {
-			mObjects = nullptr;
-			mStatus = nullptr;
-			mAutoEnable = true;
-			mIdxLast = 0;
-			mAliveNow = 0;
-			mAliveMax = max;
-
-			mObjects = static_cast<Type*>(std::malloc(sizeof(Type) * mAliveMax));
-			mStatus = new TypeStatus[max];
-
-			setup();
-		}
-		Pool(Type* objects, TypeStatus* status, size_t max) {
-			mObjects = nullptr;
-			mStatus = nullptr;
 			mAutoEnable = false;
+		}
+		Manager(size_t max) {
+			mTableObject = nullptr;
+			mTableStatus = nullptr;
 			mIdxLast = 0;
 			mAliveNow = 0;
 			mAliveMax = max;
+			mAutoEnable = true;
 
-			mObjects = objects;
-			mStatus = status;
+			mTableObject = static_cast<Type*>(std::malloc(sizeof(Type) * mAliveMax));
+			mTableStatus = new TypeStatus[max];
+
+			setup();
+		}
+		Manager(Type* objects, TypeStatus* status, size_t max) {
+			mTableObject = nullptr;
+			mTableStatus = nullptr;
+			mIdxLast = 0;
+			mAliveNow = 0;
+			mAliveMax = max;
+			mAutoEnable = false;
+
+			mTableObject = objects;
+			mTableStatus = status;
 
 			setup();
 		}
 
-		~Pool() {
+		~Manager() {
 			// delete all objects --------------------------------@/
 			for(size_t i=0; i<max_size(); i++) {
-				auto& status = mStatus[i];
+				auto& status = mTableStatus[i];
 				if(status.alive()) {
 					del_status(&status);
 				}
@@ -175,11 +238,11 @@ template <typename Type> class Pool {
 
 			// deallocate ----------------------------------------@/
 			if(mAutoEnable) {
-				if(mObjects) { std::free(mObjects); }
-				if(mStatus) { delete[] mStatus; }
+				if(mTableObject) { std::free(mTableObject); }
+				if(mTableStatus) { delete[] mTableStatus; }
 			}
-			mObjects = nullptr;
-			mStatus = nullptr;
+			mTableObject = nullptr;
+			mTableStatus = nullptr;
 
 			mIdxLast = 0;
 			mAliveNow = 0;
@@ -189,15 +252,13 @@ template <typename Type> class Pool {
 		// adding fns -----------------------------------------@/
 		auto del_status(TypeStatus* status) {
 			SCL_ASSERT_MSG(status, "pool %p: attempt to delete NULL status!", this);
-			SCL_ASSERT_MSG(status->mAlive, "pool %p: attempt to delete dead status %p!", this, status);
+			SCL_ASSERT_MSG(status->alive(), "pool %p: attempt to delete dead status %p!", this, status);
 			
 			// deconstruct object -----------------------@/
-			mObjects[status->mID].~Type();
+			mTableObject[status->mID].~Type();
 
 			// clear references -------------------------@/
-			while(status->mReflistTail) {
-				status->mReflistTail->unbind();
-			}
+			status->reflist_clear();
 
 			// remove from free list --------------------@/
 			status->mAlive = false;
@@ -210,18 +271,18 @@ template <typename Type> class Pool {
 		}
 		auto add_status() -> TypeStatus* {
 			// get free object --------------------------@/
-			SCL_ASSERT_MSG(mObjects,"pool %p: didn't setup!",this);
+			SCL_ASSERT_MSG(mTableObject,"pool %p: didn't setup!",this);
 			SCL_ASSERT_MSG(mAliveNow != mAliveMax,"pool %p: object over!",this);
 			auto last_idx = mIdxLast;
 
 			// add to free list -------------------------@/
-			auto& status = mStatus[last_idx];
+			auto& status = mTableStatus[last_idx];
 			mIdxLast = status.mIDNext;
 			mAliveNow++;
 			status.mAlive = true;
 
 			// create the object it points to -----------@/
-			new(&mObjects[last_idx]) Type();
+			new(&mTableObject[last_idx]) Type();
 			return &status;
 		}
 
@@ -231,7 +292,7 @@ template <typename Type> class Pool {
 			std::vector<TypeRef> table;
 
 			for(size_t i=0; i<max_size() && table.size() < limit; i++) {
-				auto& status = &mStatus[i];
+				auto& status = &mTableStatus[i];
 				if(status.alive()) {
 					table.push_back(TypeRef(&status));
 				}
@@ -245,28 +306,24 @@ template <typename Type> class Pool {
 			SCL_ASSERT_MSG(mAliveNow==0,"pool %p: num. alive must be 0",this);
 
 			if(mAutoEnable) {
-				SCL_ASSERT_MSG(mObjects,"pool %p: objects must exist",this);
-				SCL_ASSERT_MSG(mStatus,"pool %p: status must exist",this);
+				SCL_ASSERT_MSG(mTableObject,"pool %p: objects must exist",this);
+				SCL_ASSERT_MSG(mTableStatus,"pool %p: status must exist",this);
 			}
 			
 			for(size_t i=0; i<mAliveMax; i++) {
-				auto &status = mStatus[i];
+				auto &status = mTableStatus[i];
 				status.mAlive = false;
 				status.mID = i & 0xFFFF;
 				status.mIDNext = (i+1) & 0xFFFF;
-				status.mPool = this;
+				status.mManager = this;
 				status.mReflistTail = nullptr;
 			}
-			mStatus[mAliveMax-1].mID = 0xFFFF;
+			mTableStatus[mAliveMax-1].mID = 0xFFFF;
 		}
 };
 
-template<typename Type> constexpr auto PoolStatus<Type>::get() const -> Type* {
-	return &mPool->mObjects[mID];
-}
-template<typename Type> constexpr auto PoolStatus<Type>::del() -> void {
-	mPool->del_status(this);
-}
-	
+// ------------------------------------------------------@/
+} // namespace pool
 } // namespace scl
+// ------------------------------------------------------@/
 

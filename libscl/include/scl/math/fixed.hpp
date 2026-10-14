@@ -41,7 +41,8 @@ static inline uint32_t sqrti(uint64_t a_nInput) {
 	return res;
 }
 
-template<std::size_t S = 12> class QFxi {
+struct _QFxi_base {};
+template<std::size_t S = 12> class QFxi : public _QFxi_base {
 	public:
 		using value_type = int32_t;
 		using real_type = double;

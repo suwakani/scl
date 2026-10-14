@@ -123,11 +123,6 @@ class Blob {
 			return compress(false,do_compress);
 		}
 		auto decompress(bool include_metadata=true) -> Blob {
-		/*	MARISA_ASSERT(outbuf,"marisa_data_decompress","output buffer is null!");
-			MARISA_ASSERT(srcbuf,"marisa_data_decompress","source buffer is null!");
-			MARISA_ASSERT(srcsize>0,"marisa_data_decompress","source size is 0!");
-			MARISA_ASSERT(outsize>0,"marisa_data_decompress","output size is 0!");*/
-
 			z_stream zstrm;
 			zstrm.zalloc = Z_NULL;
 			zstrm.zfree = Z_NULL;
