@@ -4,7 +4,7 @@
 //                                                                           @/
 // ==========================================================================@/
 /*
-	*	unlike previous implementations, each Status will hold a list of
+	*	unlike previous implementations, each Header will hold a list of
 		pointers to weak references. you may use this to safely deal with
 		references to objects in the pool.
 
@@ -22,33 +22,34 @@
 #include <scl/basis/errhandle.hpp>
 #include <cstdint>
 #include <format>
+#include <vector>
 // ------------------------------------------------------@/
 namespace scl {
 namespace pool {
 // ------------------------------------------------------@/
 template<typename Type> class Ref;
-template<typename Type> class Status;
+template<typename Type> class Header;
 template<typename Type> class Manager;
 
 // ==========================================================================@/
 //                                                                           @/
-// -- Ref & Status --------------------------------------------------------- @/
+// -- Ref & Header --------------------------------------------------------- @/
 //                                                                           @/
 // ==========================================================================@/
 template<typename Type> class Ref {
 	public:
 		Ref<Type>* mLLPrev;
 		Ref<Type>* mLLNext;
-		Status<Type>* mStatus;
+		Header<Type>* mHeader;
 
 		// modifiers ------------------------------------------@/
-		auto bind(Status<Type>& status) -> void;
+		auto bind(Header<Type>& header) -> void;
 		auto unbind() -> void;
 		constexpr auto del() -> void;
 
 		// observers ------------------------------------------@/
 		constexpr auto expired() const -> bool { 
-			return mStatus == nullptr;
+			return mHeader == nullptr;
 		}
 		constexpr auto lock() -> const Type* {
 			SCL_ASSERT_MSG(not expired(), "ref %p: attempted to lock null ref!", this);
@@ -57,41 +58,41 @@ template<typename Type> class Ref {
 		constexpr auto get() const -> Type*;
 
 		// constructors ---------------------------------------@/
-		constexpr Ref() : mStatus(NULL),mLLPrev(NULL),mLLNext(NULL) {
+		constexpr Ref() : mHeader(NULL),mLLPrev(NULL),mLLNext(NULL) {
 		}
-		constexpr Ref(Status<Type>& status) {
-			mStatus = NULL;
+		constexpr Ref(Header<Type>& header) {
+			mHeader = NULL;
 			mLLPrev = NULL;
 			mLLNext = NULL;
-			bind(status);
+			bind(header);
 		}
 		constexpr ~Ref() {
 			unbind();
 		}
 		constexpr Ref(const Ref<Type>& other) {
-			mStatus = NULL;
+			mHeader = NULL;
 			mLLPrev = NULL;
 			mLLNext = NULL;
 			if(not other.expired()) {
-				bind(*other.mStatus);
+				bind(*other.mHeader);
 			}
 		}
 
 		auto operator=(const Ref<Type>& other) -> Ref<Type>& {
 			if(not other.expired()) {
-				bind(*other.mStatus);
+				bind(*other.mHeader);
 			}
 			return *this;
 		}
 
 		// misc -----------------------------------------------@/
 		auto to_str() const -> std::string {
-			return std::format("Ref(@{0:X})[ status={1:X}, prev={2:X}, next={3:X} ]",
-				(size_t)this,(size_t)mStatus,(size_t)mLLPrev,(size_t)mLLNext
+			return std::format("Ref(@{0:X})[ header={1:X}, prev={2:X}, next={3:X} ]",
+				(size_t)this,(size_t)mHeader,(size_t)mLLPrev,(size_t)mLLNext
 			);
 		}
 };
-template<typename Type> class Status {
+template<typename Type> class Header {
 	public:
 		uint32_t mAlive;
 		uint16_t mID,mIDNext;
@@ -108,25 +109,25 @@ template<typename Type> class Status {
 		constexpr auto reflist_clear() -> void;
 
 		// constructors ---------------------------------------@/
-		Status() : mAlive(false),mID(0),mIDNext(0),
+		Header() : mAlive(false),mID(0),mIDNext(0),
 			mManager(NULL),mReflistTail(NULL) {}
 };
 
 // reference structure's methods ------------------------@/
-template<typename Type> auto Ref<Type>::bind(Status<Type>& status) -> void {
+template<typename Type> auto Ref<Type>::bind(Header<Type>& header) -> void {
 	/*
 		* we should NOT be able to bind a reference twice to the same object.
 		* we should also only be able to bind if not expired. if this ref is
 		  already binded, it should unbind before re-binding.
 	*/
-	SCL_ASSERT_MSG(&status, "ref %p: bind to null!", this);
-	SCL_ASSERT_MSG(status.alive(), "ref %p: bind to dead pool entry!", this);
-	SCL_ASSERT_MSG(&status != mStatus, "ref %p: double-binded to status %p!", this, status);
+	SCL_ASSERT_MSG(&header, "ref %p: bind to null!", this);
+	SCL_ASSERT_MSG(header.alive(), "ref %p: bind to dead pool entry!", this);
+	SCL_ASSERT_MSG(&header != mHeader, "ref %p: double-binded to header %p!", this, header);
 	if(!expired()) unbind();
-	mStatus = &status;
+	mHeader = &header;
 
 	// create link (add to tail, if needed) -------------@/
-	if(auto tailRef = mStatus->mReflistTail) {
+	if(auto tailRef = mHeader->mReflistTail) {
 		// this case is used if adding to existing list
 		mLLPrev = tailRef;
 		mLLNext = nullptr;
@@ -136,12 +137,12 @@ template<typename Type> auto Ref<Type>::bind(Status<Type>& status) -> void {
 		mLLPrev = nullptr;
 		mLLNext = nullptr;
 	}
-	mStatus->mReflistTail = this;
+	mHeader->mReflistTail = this;
 }
 template<typename Type> auto Ref<Type>::unbind() -> void {
-	if(mStatus) {
-		if(mStatus->mReflistTail == this) {
-			mStatus->mReflistTail = mLLPrev;
+	if(mHeader) {
+		if(mHeader->mReflistTail == this) {
+			mHeader->mReflistTail = mLLPrev;
 		}
 
 		// remove link ----------------------------------@/
@@ -150,22 +151,22 @@ template<typename Type> auto Ref<Type>::unbind() -> void {
 	}
 	mLLPrev = nullptr;
 	mLLNext = nullptr;
-	mStatus = nullptr;
+	mHeader = nullptr;
 }
 template<typename Type> constexpr auto Ref<Type>::get() const -> Type* {
-	return mStatus->get();
+	return mHeader->get();
 }
 template<typename Type> constexpr auto Ref<Type>::del() -> void {
-	mStatus->del();
+	mHeader->del();
 }
-// status structure's methods ---------------------------@/
-template<typename Type> constexpr auto Status<Type>::get() const -> Type* {
+// header structure's methods ---------------------------@/
+template<typename Type> constexpr auto Header<Type>::get() const -> Type* {
 	return &mManager->mTableObject[mID];
 }
-template<typename Type> constexpr auto Status<Type>::del() -> void {
-	mManager->del_status(this);
+template<typename Type> constexpr auto Header<Type>::del() -> void {
+	mManager->del_header(this);
 }
-template<typename Type> constexpr auto Status<Type>::reflist_clear() -> void {
+template<typename Type> constexpr auto Header<Type>::reflist_clear() -> void {
 	while(mReflistTail) {
 		mReflistTail->unbind();
 	}
@@ -179,11 +180,12 @@ template<typename Type> constexpr auto Status<Type>::reflist_clear() -> void {
 template <typename Type> class Manager {
 	public:
 		using TypeRef = Ref<Type>;
-		using TypeStatus = Status<Type>;
+		using TypeHeader = Header<Type>;
 	public:
 		Type* mTableObject;
-		TypeStatus* mTableStatus;
+		TypeHeader* mTableHeader;
 		bool mAutoEnable;
+		bool mDidSetup;
 		size_t mAliveNow;
 		size_t mAliveMax;
 		size_t mIdxLast;
@@ -194,96 +196,115 @@ template <typename Type> class Manager {
 		// construct/destructor -------------------------@/
 		Manager() {
 			mTableObject = nullptr;
-			mTableStatus = nullptr;
+			mTableHeader = nullptr;
 			mIdxLast = 0;
 			mAliveNow = 0;
 			mAliveMax = 0;
 			mAutoEnable = false;
+			mDidSetup = false;
 		}
 		Manager(size_t max) {
-			mTableObject = nullptr;
-			mTableStatus = nullptr;
+			mDidSetup = false;
+			setup_auto(max);
+		}
+		Manager(Type* tableObject, TypeHeader* tableHeader, size_t max) {
+			mDidSetup = false;
+			setup_manual(tableObject,tableHeader,max);
+		}
+
+		~Manager() {
+			close();
+		}
+
+		// setup fns ------------------------------------------@/
+		auto setup_auto(size_t max) -> void {
+			if(mDidSetup) close();
+
+			mTableObject = static_cast<Type*>(std::malloc(sizeof(Type) * max));
+			mTableHeader = new TypeHeader[max];
 			mIdxLast = 0;
 			mAliveNow = 0;
 			mAliveMax = max;
 			mAutoEnable = true;
 
-			mTableObject = static_cast<Type*>(std::malloc(sizeof(Type) * mAliveMax));
-			mTableStatus = new TypeStatus[max];
+			mDidSetup = true;
 
 			setup();
 		}
-		Manager(Type* objects, TypeStatus* status, size_t max) {
-			mTableObject = nullptr;
-			mTableStatus = nullptr;
+		auto setup_manual(Type* tableObject, TypeHeader* tableHeader, size_t max) -> void {
+			if(mDidSetup) close();
+
+			mTableObject = tableObject;
+			mTableHeader = tableHeader;
 			mIdxLast = 0;
 			mAliveNow = 0;
 			mAliveMax = max;
 			mAutoEnable = false;
 
-			mTableObject = objects;
-			mTableStatus = status;
+			mDidSetup = true;
 
 			setup();
 		}
+		auto close() -> void {
+			if(!mDidSetup) return;
 
-		~Manager() {
 			// delete all objects --------------------------------@/
 			for(size_t i=0; i<max_size(); i++) {
-				auto& status = mTableStatus[i];
-				if(status.alive()) {
-					del_status(&status);
+				auto& header = mTableHeader[i];
+				if(header.alive()) {
+					del_header(&header);
 				}
 			}
 
 			// deallocate ----------------------------------------@/
 			if(mAutoEnable) {
 				if(mTableObject) { std::free(mTableObject); }
-				if(mTableStatus) { delete[] mTableStatus; }
+				if(mTableHeader) { delete[] mTableHeader; }
 			}
 			mTableObject = nullptr;
-			mTableStatus = nullptr;
+			mTableHeader = nullptr;
 
 			mIdxLast = 0;
 			mAliveNow = 0;
 			mAliveMax = 0;
+			mDidSetup = false;
 		}
 
 		// adding fns -----------------------------------------@/
-		auto del_status(TypeStatus* status) {
-			SCL_ASSERT_MSG(status, "pool %p: attempt to delete NULL status!", this);
-			SCL_ASSERT_MSG(status->alive(), "pool %p: attempt to delete dead status %p!", this, status);
+		auto del_header(TypeHeader* header) {
+			SCL_ASSERT_MSG(header, "pool %p: attempt to delete NULL header!", this);
+			SCL_ASSERT_MSG(header->alive(), "pool %p: attempt to delete dead header %p!", this, header);
 			
 			// deconstruct object -----------------------@/
-			mTableObject[status->mID].~Type();
+			mTableObject[header->mID].~Type();
 
 			// clear references -------------------------@/
-			status->reflist_clear();
+			header->reflist_clear();
 
 			// remove from free list --------------------@/
-			status->mAlive = false;
-			status->mIDNext = mIdxLast;
+			header->mAlive = false;
+			header->mIDNext = mIdxLast;
 			mAliveNow--;
-			mIdxLast = status->mID;
+			mIdxLast = header->mID;
 		}
 		constexpr auto add_ref() -> TypeRef {
-			return TypeRef(*add_status());
+			return TypeRef(*add_header());
 		}
-		auto add_status() -> TypeStatus* {
+		auto add_header() -> TypeHeader* {
 			// get free object --------------------------@/
 			SCL_ASSERT_MSG(mTableObject,"pool %p: didn't setup!",this);
 			SCL_ASSERT_MSG(mAliveNow != mAliveMax,"pool %p: object over!",this);
 			auto last_idx = mIdxLast;
 
 			// add to free list -------------------------@/
-			auto& status = mTableStatus[last_idx];
-			mIdxLast = status.mIDNext;
+			auto& header = mTableHeader[last_idx];
+			mIdxLast = header.mIDNext;
 			mAliveNow++;
-			status.mAlive = true;
+			header.mAlive = true;
 
 			// create the object it points to -----------@/
 			new(&mTableObject[last_idx]) Type();
-			return &status;
+			return &header;
 		}
 
 		// list operations ------------------------------------@/
@@ -292,9 +313,9 @@ template <typename Type> class Manager {
 			std::vector<TypeRef> table;
 
 			for(size_t i=0; i<max_size() && table.size() < limit; i++) {
-				auto& status = &mTableStatus[i];
-				if(status.alive()) {
-					table.push_back(TypeRef(&status));
+				auto& header = &mTableHeader[i];
+				if(header.alive()) {
+					table.push_back(TypeRef(&header));
 				}
 			}
 
@@ -307,18 +328,18 @@ template <typename Type> class Manager {
 
 			if(mAutoEnable) {
 				SCL_ASSERT_MSG(mTableObject,"pool %p: objects must exist",this);
-				SCL_ASSERT_MSG(mTableStatus,"pool %p: status must exist",this);
+				SCL_ASSERT_MSG(mTableHeader,"pool %p: header must exist",this);
 			}
 			
 			for(size_t i=0; i<mAliveMax; i++) {
-				auto &status = mTableStatus[i];
-				status.mAlive = false;
-				status.mID = i & 0xFFFF;
-				status.mIDNext = (i+1) & 0xFFFF;
-				status.mManager = this;
-				status.mReflistTail = nullptr;
+				auto &header = mTableHeader[i];
+				header.mAlive = false;
+				header.mID = i & 0xFFFF;
+				header.mIDNext = (i+1) & 0xFFFF;
+				header.mManager = this;
+				header.mReflistTail = nullptr;
 			}
-			mTableStatus[mAliveMax-1].mID = 0xFFFF;
+			mTableHeader[mAliveMax-1].mID = 0xFFFF;
 		}
 };
 

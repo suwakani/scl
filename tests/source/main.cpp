@@ -35,7 +35,7 @@ namespace sample_objlist {
 	};
 
 	auto start() -> void {
-		sclpool::Manager<CUnit> objpool(1000);
+		sclpool::Manager<CUnit> objpool(512);
 
 		// creating and deleting multiple ---------------@/
 		std::vector<sclpool::Manager<CUnit>::TypeRef> reftable;
@@ -53,15 +53,15 @@ namespace sample_objlist {
 
 		auto objRef_a = objpool.add_ref();
 		auto objRef_b = objpool.add_ref();
-
 		std::swap(objRef_a,objRef_b);
 
 		std::cout << std::format("objRef_a: {0}\n", objRef_a.to_str());
 		std::cout << std::format("objRef_b: {0}\n", objRef_b.to_str());
 
-		std::cout << std::format("objpool's size: {0}KB(obj) + {1}KB(status)\n",
+		std::cout << std::format("objpool ({0} objs)'s size: {1}KB(obj) + {2}KB(header)\n",
+			objpool.max_size(),
 			(float)(objpool.max_size() * sizeof(CUnit)) / 1024.0,
-			(float)(objpool.max_size() * sizeof(sclpool::Status<CUnit>)) / 1024.0
+			(float)(objpool.max_size() * sizeof(sclpool::Header<CUnit>)) / 1024.0
 		);
 	}
 };
