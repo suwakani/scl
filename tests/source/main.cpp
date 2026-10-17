@@ -13,21 +13,30 @@
 namespace stdfs = std::filesystem;
 namespace sclarc = scl::io::archive;
 namespace sclpool = scl::pool;
-using Fxi = scl::math::QFxi<12>;
+using Fxi = scl::math::QFxi<14>;
 using Vec2fxi = scl::math::Vec<Fxi,2>;
 using Vec3fxi = scl::math::Vec<Fxi,3>;
 
 namespace sample_objlist {
 	class CUnit {
 		public:
-			Vec3fxi pos;
-			int32_t hp;
-			int32_t alive;
+			Vec3fxi mPos;
+			int32_t mHP;
+			int32_t mAlive;
 
 			std::array<uint8_t,40> work;
 
 			CUnit() {
+				mPos = { 0,0,0 };
+				mHP = 0;
+				mAlive = true;
 				std::printf("unit %p: constructed!\n",this);
+			}
+			CUnit(int hp) {
+				mPos = { 0,0,0 };
+				mHP = hp;
+				mAlive = true;
+				std::printf("unit %p: constructed EX!\n",this);
 			}
 			~CUnit() {
 				std::printf("unit %p: deleted!\n",this);
@@ -35,7 +44,7 @@ namespace sample_objlist {
 	};
 
 	auto start() -> void {
-		sclpool::Manager<CUnit> objpool(512);
+		sclpool::Manager<CUnit> objpool(64);
 
 		// creating and deleting multiple ---------------@/
 		std::vector<sclpool::Manager<CUnit>::TypeRef> reftable;
@@ -54,14 +63,15 @@ namespace sample_objlist {
 		auto objRef_a = objpool.add_ref();
 		auto objRef_b = objpool.add_ref();
 		std::swap(objRef_a,objRef_b);
+		objpool.add_ref(40);
 
 		std::cout << std::format("objRef_a: {0}\n", objRef_a.to_str());
 		std::cout << std::format("objRef_b: {0}\n", objRef_b.to_str());
 
 		std::cout << std::format("objpool ({0} objs)'s size: {1}KB(obj) + {2}KB(header)\n",
 			objpool.max_size(),
-			(float)(objpool.max_size() * sizeof(CUnit)) / 1024.0,
-			(float)(objpool.max_size() * sizeof(sclpool::Header<CUnit>)) / 1024.0
+			(float)(objpool.totalsize_object()) / 1024.0,
+			(float)(objpool.totalsize_header()) / 1024.0
 		);
 	}
 };

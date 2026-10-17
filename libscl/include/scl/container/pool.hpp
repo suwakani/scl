@@ -43,7 +43,7 @@ template<typename Type> class Ref {
 		Header<Type>* mHeader;
 
 		// modifiers ------------------------------------------@/
-		auto bind(Header<Type>& header) -> void;
+		auto bind(Header<Type>* header) -> void;
 		auto unbind() -> void;
 		constexpr auto del() -> void;
 
@@ -60,7 +60,7 @@ template<typename Type> class Ref {
 		// constructors ---------------------------------------@/
 		constexpr Ref() : mHeader(NULL),mLLPrev(NULL),mLLNext(NULL) {
 		}
-		constexpr Ref(Header<Type>& header) {
+		constexpr Ref(Header<Type>* header) {
 			mHeader = NULL;
 			mLLPrev = NULL;
 			mLLNext = NULL;
@@ -74,13 +74,13 @@ template<typename Type> class Ref {
 			mLLPrev = NULL;
 			mLLNext = NULL;
 			if(not other.expired()) {
-				bind(*other.mHeader);
+				bind(other.mHeader);
 			}
 		}
 
 		auto operator=(const Ref<Type>& other) -> Ref<Type>& {
 			if(not other.expired()) {
-				bind(*other.mHeader);
+				bind(other.mHeader);
 			}
 			return *this;
 		}
@@ -114,17 +114,17 @@ template<typename Type> class Header {
 };
 
 // reference structure's methods ------------------------@/
-template<typename Type> auto Ref<Type>::bind(Header<Type>& header) -> void {
+template<typename Type> auto Ref<Type>::bind(Header<Type>* header) -> void {
 	/*
 		* we should NOT be able to bind a reference twice to the same object.
 		* we should also only be able to bind if not expired. if this ref is
 		  already binded, it should unbind before re-binding.
 	*/
-	SCL_ASSERT_MSG(&header, "ref %p: bind to null!", this);
-	SCL_ASSERT_MSG(header.alive(), "ref %p: bind to dead pool entry!", this);
-	SCL_ASSERT_MSG(&header != mHeader, "ref %p: double-binded to header %p!", this, header);
+	SCL_ASSERT_MSG(header, "ref %p: bind to null!", this);
+	SCL_ASSERT_MSG(header->alive(), "ref %p: bind to dead pool entry!", this);
+	SCL_ASSERT_MSG(header != mHeader, "ref %p: double-binded to header %p!", this, header);
 	if(!expired()) unbind();
-	mHeader = &header;
+	mHeader = header;
 
 	// create link (add to tail, if needed) -------------@/
 	if(auto tailRef = mHeader->mReflistTail) {
@@ -192,6 +192,8 @@ template <typename Type> class Manager {
 
 		constexpr auto size() const -> size_t { return mAliveNow; }
 		constexpr auto max_size() const -> size_t { return mAliveMax; }
+		constexpr auto totalsize_object() const -> size_t { return sizeof(Type) * mAliveMax; }
+		constexpr auto totalsize_header() const -> size_t { return sizeof(TypeHeader) * mAliveMax; }
 
 		// construct/destructor -------------------------@/
 		Manager() {
@@ -287,10 +289,10 @@ template <typename Type> class Manager {
 			mAliveNow--;
 			mIdxLast = header->mID;
 		}
-		constexpr auto add_ref() -> TypeRef {
-			return TypeRef(*add_header());
+		template <typename ...Params> constexpr auto add_ref(Params&&... params) -> TypeRef {
+			return TypeRef(add_header(std::forward<Params>(params)...));
 		}
-		auto add_header() -> TypeHeader* {
+		template <typename ...Params> auto add_header(Params&&... params) -> TypeHeader* {
 			// get free object --------------------------@/
 			SCL_ASSERT_MSG(mTableObject,"pool %p: didn't setup!",this);
 			SCL_ASSERT_MSG(mAliveNow != mAliveMax,"pool %p: object over!",this);
@@ -303,7 +305,7 @@ template <typename Type> class Manager {
 			header.mAlive = true;
 
 			// create the object it points to -----------@/
-			new(&mTableObject[last_idx]) Type();
+			new(&mTableObject[last_idx]) Type(std::forward<Params>(params)...);
 			return &header;
 		}
 
@@ -323,8 +325,9 @@ template <typename Type> class Manager {
 		}
 	private:
 		auto setup() -> void {
-			SCL_ASSERT_MSG(mAliveMax>0,"pool %p: max alive must be > 0",this);
-			SCL_ASSERT_MSG(mAliveNow==0,"pool %p: num. alive must be 0",this);
+			SCL_ASSERT_MSG(mAliveMax>0, "pool %p: max alive must be > 0",this);
+			SCL_ASSERT_MSG(mAliveMax<=65535, "pool %p: max alive must be < 65536", this);
+			SCL_ASSERT_MSG(mAliveNow==0, "pool %p: num. alive must be 0",this);
 
 			if(mAutoEnable) {
 				SCL_ASSERT_MSG(mTableObject,"pool %p: objects must exist",this);
