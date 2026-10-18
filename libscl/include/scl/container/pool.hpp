@@ -329,7 +329,7 @@ template <typename Type> class Manager {
 			std::vector<TypeRef> table;
 
 			for(size_t i=0; i<max_size() && table.size() < limit; i++) {
-				auto& header = &mTableHeader[i];
+				auto& header = mTableHeader[i];
 				if(header.alive()) {
 					table.push_back(TypeRef(&header));
 				}

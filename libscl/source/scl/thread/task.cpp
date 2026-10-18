@@ -19,8 +19,8 @@ Unit::Unit() {
 
 	mPriority = 0;
 	mName = "UNNAMED";
-	mShouldDel = false;
-	mIsStepping = false;
+	flagShouldDel_set(false);
+	flagIsStepping_set(false);
 }
 Unit::Unit(size_t priority, Callback fn, const std::string& name) {
 	mManager = nullptr;
@@ -29,22 +29,22 @@ Unit::Unit(size_t priority, Callback fn, const std::string& name) {
 	mPriority = priority;
 	mCallback = fn;
 	mName = name;
-	mShouldDel = false;
-	mIsStepping = false;
+	flagShouldDel_set(false);
+	flagIsStepping_set(false);
 }
 Unit::~Unit() {
 }
 // ------------------------------------------------------@/
 auto Unit::step() -> void {
 	// execute current task -----------------------------@/
-	mIsStepping = true;
+	flagIsStepping_set(true);
 	mCallback(*this);
-	mIsStepping = false;
+	flagIsStepping_set(false);
 
 	// handle deleting ----------------------------------@/
 	// NOTE: supposedly safe ? https://stackoverflow.com/questions/20236610/can-i-call-destructor-from-its-class-method
-	if(mShouldDel) {
-		std::puts("let's get out!");
+	if(flagShouldDel_get()) {
+		std::printf("let's get out! (children: %zu)\n", mTreeChildren.size());
 		mManager->unit_del(selfref());
 		return;
 	}
@@ -79,11 +79,17 @@ Manager::Manager(size_t max_tasks) {
 	mUnitPool.setup_auto(max_tasks);
 }
 Manager::~Manager() {
-	
+	auto task_table = mUnitPool.get_tableAlive();
+	for(auto& unitRef : task_table) {
+		if(unitRef.valid()) {
+			unitRef.del();
+		}
+	}
 }
 
 // ------------------------------------------------------@/
 auto Manager::unit_add(size_t priority, UnitRef parentRef, Callback fn, const std::string& name) -> UnitRef {
+	SCL_ASSERT_MSG(mDidSetup, "taskmgr %p: not initialized yet", this);
 	SCL_ASSERT_MSG(priority < PriorityMax, "taskmgr %p: cant add task w/ priority >= %d!", this, PriorityMax);
 	if(parentRef.valid()) {
 		SCL_ASSERT_MSG(parentRef->manager() == this, "taskmgr %p: parent manager mismatch!", this);
@@ -106,10 +112,11 @@ auto Manager::unit_add(size_t priority, UnitRef parentRef, Callback fn, const st
 	return unitRef;
 }
 auto Manager::unit_del(UnitRef unit) -> void {
-	if(unit->mIsStepping) {
-		unit->mShouldDel = true;
+	if(unit->flagIsStepping_get()) {
+		unit->flagShouldDel_set(true);
 		return;
 	}
+	SCL_ASSERT_MSG(mDidSetup, "taskmgr %p: not initialized yet", this);
 	SCL_ASSERT_MSG(unit.valid(), "taskmgr %p: attempt to delete invalid ref!", this);
 	
 	// remove all children of this unit, too ------------@/
@@ -138,6 +145,9 @@ auto Manager::unit_del(UnitRef unit) -> void {
 			}
 		}
 	}
+
+	// remove ref from pool -----------------------------@/
+	unit->selfref().del();
 }
 
 // ------------------------------------------------------@/

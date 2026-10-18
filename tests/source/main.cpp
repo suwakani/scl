@@ -212,7 +212,7 @@ namespace sample_sclarc {
 };
 namespace sample_tasks {
 	auto start() -> void {
-		scltask::Manager taskmgr(64);
+		scltask::Manager taskmgr(32);
 
 		scltask::Callback tskfn_main = [](scltask::Unit& task) {
 			std::puts("hi... Okay");
@@ -234,10 +234,18 @@ namespace sample_tasks {
 
 		// prio, parent, callback, name
 		auto tsk_main = taskmgr.unit_add(0x00, NULL, tskfn_main, "main");
+		auto tsk_sub = taskmgr.unit_add(0x00, tsk_main, tskfn_sub, "sub");
 		add_workers(tsk_main);
+		add_workers(tsk_sub);
 		
 		tsk_main->step();
 		tsk_main->del();
+
+		// prev: 160
+		// now: 
+		std::cout << std::format("task size: {0} ({1}KB)\n",
+			sizeof(scltask::Unit),(double)(taskmgr.totalsize_unit()) / 1024.0
+		);
 	}
 };
 
