@@ -224,8 +224,12 @@ namespace sample_tasks {
 		scltask::Callback tskfn_worker = [](scltask::Unit& task) {
 			std::printf("worker...! (%p)\n", &task);
 		};
+		scltask::Callback tskfn_worker2 = [](scltask::Unit& task) {
+			std::printf("worker...2!!!! (%p)\n", &task);
+		};
 
 		auto add_workers = [&](scltask::UnitRef& parentRef) {
+			taskmgr.unit_add(0x03, parentRef, tskfn_worker2, "worker2");
 			taskmgr.unit_add(0x00, parentRef, tskfn_worker, "worker");
 			taskmgr.unit_add(0x00, parentRef, tskfn_worker, "worker");
 			taskmgr.unit_add(0x00, parentRef, tskfn_worker, "worker");
@@ -233,10 +237,14 @@ namespace sample_tasks {
 		};
 
 		// prio, parent, callback, name
-		auto tsk_main = taskmgr.unit_add(0x00, NULL, tskfn_main, "main");
+		auto tsk_main = taskmgr.unit_addOrphan(tskfn_main, "main");
 		auto tsk_sub = taskmgr.unit_add(0x00, tsk_main, tskfn_sub, "sub");
 		add_workers(tsk_main);
 		add_workers(tsk_sub);
+
+		std::cout << std::format("task tree:\n{0}\n",
+			tsk_main->tostr_tree()
+		);
 		
 		tsk_main->step();
 		tsk_main->del();

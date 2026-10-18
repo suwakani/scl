@@ -51,8 +51,8 @@ class Unit {
 		~Unit();
 
 		// modifiers ------------------------------------------@/
-		constexpr auto selfref() -> UnitRef { return mRefSelf; }
-		constexpr auto selfref_assign(UnitRef ref) -> void { mRefSelf = ref; }
+		constexpr auto selfref() -> UnitRef& { return mRefSelf; }
+		constexpr auto selfref_assign(const UnitRef& ref) -> void { mRefSelf = ref; }
 		constexpr auto manager() -> Manager* { return mManager; }
 		constexpr auto manager_assign(Manager* mgr) -> void { mManager = mgr; }
 
@@ -62,10 +62,17 @@ class Unit {
 		constexpr auto flagShouldDel_set(bool v) -> void { mFlags[UnitFlag::ShouldDel]; }
 		constexpr auto flagIsStepping_get() const -> bool { return mFlags[UnitFlag::IsStepping]; }
 		constexpr auto flagIsStepping_set(bool v) -> void { mFlags[UnitFlag::IsStepping]; }
+
+		constexpr auto pause() -> void { flagPaused_set(true); }
+		constexpr auto resume() -> void { flagPaused_set(false); }
 		constexpr auto paused() const -> bool { return flagPaused_get(); }
+
+		constexpr auto name() const -> const std::string& { return mName; }
+		constexpr auto priority() const -> int { return mPriority; }
 
 		// stepping -------------------------------------@/
 		auto step() -> void;
+		auto tostr_tree() -> std::string;
 
 		// tree -----------------------------------------@/
 		auto del() -> void;
@@ -93,6 +100,9 @@ class Manager {
 		// tree -----------------------------------------@/
 		auto unit_add(size_t priority, UnitRef parent, Callback fn, const std::string& name) -> UnitRef;
 		auto unit_del(UnitRef unit) -> void;
+		constexpr auto unit_addOrphan(Callback fn, const std::string& name) -> UnitRef {
+			return unit_add(0, nullptr, fn, name);
+		}
 };
 
 // ------------------------------------------------------@/

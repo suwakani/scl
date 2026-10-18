@@ -37,9 +37,11 @@ Unit::~Unit() {
 // ------------------------------------------------------@/
 auto Unit::step() -> void {
 	// execute current task -----------------------------@/
-	flagIsStepping_set(true);
-	mCallback(*this);
-	flagIsStepping_set(false);
+	if(!paused()) {
+		flagIsStepping_set(true);
+		mCallback(*this);
+		flagIsStepping_set(false);
+	}
 
 	// handle deleting ----------------------------------@/
 	// NOTE: supposedly safe ? https://stackoverflow.com/questions/20236610/can-i-call-destructor-from-its-class-method
@@ -55,9 +57,32 @@ auto Unit::step() -> void {
 		children.push_back(childRef);
 	}
 
+    std::sort(children.begin(), children.end(), [](UnitRef& a, UnitRef& b) {
+		return a->priority() < b->priority();
+	});
+
 	for(auto& childRef : children) {
 		childRef->step();
 	}
+}
+auto Unit::tostr_tree() -> std::string {
+	std::string fullstr;
+
+	std::function<void(UnitRef&,int)> cb = [&](UnitRef& unitRef, int depth) {
+		auto unit = unitRef.lock();
+		for(int i=0; i<depth; i++) {
+			fullstr += "    ";
+		}
+		fullstr += std::format("* [{0:02X}h] '{1:24}'", unit->priority(),unit->name());
+		fullstr += "\n";
+
+		for(auto& childRef : unit->mTreeChildren) {
+			cb(childRef,depth+1);
+		}
+	};
+
+	cb(selfref(),0);
+	return fullstr.substr(0,fullstr.size()-1);
 }
 // ------------------------------------------------------@/
 auto Unit::del() -> void {

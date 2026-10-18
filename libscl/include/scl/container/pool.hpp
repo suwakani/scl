@@ -131,11 +131,12 @@ template<typename Type> auto Ref<Type>::bind(Header<Type>* header) -> void {
 	/*
 		* we should NOT be able to bind a reference twice to the same object.
 		* we should also only be able to bind if not expired. if this ref is
-		  already binded, it should unbind before re-binding.
+		  already binded, it should unbind before re-binding. this also deals
+		  with double-binding (binding again to the same header) in the
+		  process.
 	*/
 	SCL_ASSERT_MSG(header, "ref %p: bind to null!", this);
 	SCL_ASSERT_MSG(header->alive(), "ref %p: bind to dead pool entry!", this);
-	SCL_ASSERT_MSG(header != mHeader, "ref %p: double-binded to header %p!", this, header);
 	if(valid()) unbind();
 	mHeader = header;
 
