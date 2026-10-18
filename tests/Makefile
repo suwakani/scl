@@ -7,7 +7,7 @@ CFLAGS += --write-user-dependencies -MP
 CFLAGS += -I../libscl/include
 CFLAGS += -g
 LDFLAGS := -L../libscl/bin
-LDFLAGS += -lz -lscl
+LDFLAGS += -lz -lscl -static
 
 # output --------------------------------------------------------------------@/
 OBJ_DIR := build

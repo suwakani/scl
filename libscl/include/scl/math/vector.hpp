@@ -16,7 +16,7 @@ template<typename T, std::size_t N = 4> class Vec {
 	public:
 		std::array<T,N> mData;
 		constexpr Vec() : mData{} {}
-		template<typename ...T0> constexpr Vec(T0... v) : mData{v...} {}
+		template<typename ...T0> constexpr Vec(T0 ...v) : mData{v...} {}
 
 		// access methods -------------------------------@/
 		constexpr auto operator[](const std::size_t idx) -> T& {
@@ -73,6 +73,7 @@ template<typename T, std::size_t N = 4> class Vec {
 
 			// specialization for fixed-point types ------@/
 			if constexpr (std::is_base_of<_QFxi_base,T>::value) {
+				// TODO: optional specialization for alphamax+betamin
 				return res.sqrt();
 			} else {
 				return std::sqrt(res);

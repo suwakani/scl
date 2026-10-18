@@ -1,18 +1,18 @@
 #define SCL_USE_ZLIB
 #include <scl/container/blob.hpp>
 #include <scl/container/pool.hpp>
+#include <scl/io/archive.hpp>
 #include <scl/math/fixed.hpp>
 #include <scl/math/vector.hpp>
-#include <scl/io/archive.hpp>
+#include <scl/thread/task.hpp>
 
-#include <ranges>
-#include <filesystem>
 #include <format>
+#include <functional>
 #include <iostream>
 
-namespace stdfs = std::filesystem;
 namespace sclarc = scl::io::archive;
 namespace sclpool = scl::pool;
+namespace scltask = scl::task;
 using Fxi = scl::math::QFxi<14>;
 using Vec2fxi = scl::math::Vec<Fxi,2>;
 using Vec3fxi = scl::math::Vec<Fxi,3>;
@@ -23,8 +23,17 @@ namespace sample_objlist {
 			Vec3fxi mPos;
 			int32_t mHP;
 			int32_t mAlive;
+			sclpool::Ref<CUnit> mRef;
+			std::array<uint8_t,40> mWork;
 
-			std::array<uint8_t,40> work;
+			auto ref_assign(const sclpool::Ref<CUnit>& ref) -> void {
+				mRef = ref;
+				std::cout << std::format("\tref: {0}\n", mRef.to_str());
+			}
+
+			auto hello() -> void {
+				std::printf("hello, from object %p! hp=%d.\n", this,mHP);
+			}
 
 			CUnit() {
 				mPos = { 0,0,0 };
@@ -36,7 +45,7 @@ namespace sample_objlist {
 				mPos = { 0,0,0 };
 				mHP = hp;
 				mAlive = true;
-				std::printf("unit %p: constructed EX!\n",this);
+				std::printf("unit %p: constructed EX!\n", this);
 			}
 			~CUnit() {
 				std::printf("unit %p: deleted!\n",this);
@@ -47,7 +56,7 @@ namespace sample_objlist {
 		sclpool::Manager<CUnit> objpool(64);
 
 		// creating and deleting multiple ---------------@/
-		std::vector<sclpool::Manager<CUnit>::TypeRef> reftable;
+		std::vector<sclpool::Ref<CUnit>> reftable;
 
 		for(int i=0; i<4; i++) {
 			auto objRef = objpool.add_ref();
@@ -55,15 +64,21 @@ namespace sample_objlist {
 		}
 		while(!reftable.empty()) {
 			auto objRef = reftable.back();
-			objRef.lock();
 			objRef.del();
 			reftable.pop_back();
 		}
 
+		// swapping & object creation -------------------@/
 		auto objRef_a = objpool.add_ref();
 		auto objRef_b = objpool.add_ref();
 		std::swap(objRef_a,objRef_b);
-		objpool.add_ref(40);
+		auto objRef_c = objpool.add_ref(40);
+			objRef_c.lock()->ref_assign(objRef_c);
+
+		// slow shared_ptr-like usage -------------------@/
+		auto objSh_ref = objpool.add_ref();
+		objSh_ref->hello();
+		std::printf("hp: %d\n", objSh_ref->mHP);
 
 		std::cout << std::format("objRef_a: {0}\n", objRef_a.to_str());
 		std::cout << std::format("objRef_b: {0}\n", objRef_b.to_str());
@@ -168,6 +183,10 @@ namespace sample_fxi {
 		Vec2fxi v { 3,4 };
 		std::cout << std::format("v:     {0}\n", v.to_str());
 		std::cout << std::format("v.len: {0}\n", v.magnitude().real());
+		for(int i=0; i<=20; i++) {
+			auto n = Fxi(i) / 20;
+			std::cout << std::format("{0}/20: {1} (actual: {2})\n", i, n.real(), (float)(i) / 20);
+		}
 	}
 };
 namespace sample_sclarc {
@@ -191,11 +210,42 @@ namespace sample_sclarc {
 		std::puts("sclarc: unpacked!");
 	}
 };
+namespace sample_tasks {
+	auto start() -> void {
+		scltask::Manager taskmgr(64);
+
+		scltask::Callback tskfn_main = [](scltask::Unit& task) {
+			std::puts("hi... Okay");
+		};
+		scltask::Callback tskfn_sub = [](scltask::Unit& task) {
+			std::puts("sub task... children will be killed.");
+			task.del();
+		};
+		scltask::Callback tskfn_worker = [](scltask::Unit& task) {
+			std::printf("worker...! (%p)\n", &task);
+		};
+
+		auto add_workers = [&](scltask::UnitRef& parentRef) {
+			taskmgr.unit_add(0x00, parentRef, tskfn_worker, "worker");
+			taskmgr.unit_add(0x00, parentRef, tskfn_worker, "worker");
+			taskmgr.unit_add(0x00, parentRef, tskfn_worker, "worker");
+			taskmgr.unit_add(0x00, parentRef, tskfn_worker, "worker");
+		};
+
+		// prio, parent, callback, name
+		auto tsk_main = taskmgr.unit_add(0x00, NULL, tskfn_main, "main");
+		add_workers(tsk_main);
+		
+		tsk_main->step();
+		tsk_main->del();
+	}
+};
 
 int main(int argc, const char* argv[]) {
 	sample_objlist::start();
 	sample_fxi::start();
 	sample_sclarc::fn_pack();
 	sample_sclarc::fn_unpack();
+	sample_tasks::start();
 }
 

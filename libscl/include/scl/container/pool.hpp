@@ -51,20 +51,28 @@ template<typename Type> class Ref {
 		constexpr auto expired() const -> bool { 
 			return mHeader == nullptr;
 		}
-		constexpr auto lock() -> const Type* {
-			SCL_ASSERT_MSG(not expired(), "ref %p: attempted to lock null ref!", this);
+		constexpr auto valid() const -> bool {
+			return !expired();
+		}
+		constexpr auto lock() const -> Type* {
+			SCL_ASSERT_MSG(valid(), "ref %p: attempted to lock null ref!", this);
 			return get();
 		}
 		constexpr auto get() const -> Type*;
+		constexpr auto operator->() -> Type* {
+			return lock();
+		}
 
 		// constructors ---------------------------------------@/
-		constexpr Ref() : mHeader(NULL),mLLPrev(NULL),mLLNext(NULL) {
+		constexpr Ref() : mLLPrev(NULL),mLLNext(NULL),mHeader(NULL) {
 		}
 		constexpr Ref(Header<Type>* header) {
 			mHeader = NULL;
 			mLLPrev = NULL;
 			mLLNext = NULL;
-			bind(header);
+			if(header) {
+				bind(header);
+			}
 		}
 		constexpr ~Ref() {
 			unbind();
@@ -73,14 +81,20 @@ template<typename Type> class Ref {
 			mHeader = NULL;
 			mLLPrev = NULL;
 			mLLNext = NULL;
-			if(not other.expired()) {
+			if(other.valid()) {
 				bind(other.mHeader);
 			}
 		}
 
+		// operators ------------------------------------@/
+		constexpr auto operator==(const Ref<Type>& other) const -> bool {
+			return get() == other.get();
+		}
 		auto operator=(const Ref<Type>& other) -> Ref<Type>& {
-			if(not other.expired()) {
+			if(other.valid()) {
 				bind(other.mHeader);
+			} else {
+				unbind();
 			}
 			return *this;
 		}
@@ -112,7 +126,6 @@ template<typename Type> class Header {
 		Header() : mAlive(false),mID(0),mIDNext(0),
 			mManager(NULL),mReflistTail(NULL) {}
 };
-
 // reference structure's methods ------------------------@/
 template<typename Type> auto Ref<Type>::bind(Header<Type>* header) -> void {
 	/*
@@ -123,7 +136,7 @@ template<typename Type> auto Ref<Type>::bind(Header<Type>* header) -> void {
 	SCL_ASSERT_MSG(header, "ref %p: bind to null!", this);
 	SCL_ASSERT_MSG(header->alive(), "ref %p: bind to dead pool entry!", this);
 	SCL_ASSERT_MSG(header != mHeader, "ref %p: double-binded to header %p!", this, header);
-	if(!expired()) unbind();
+	if(valid()) unbind();
 	mHeader = header;
 
 	// create link (add to tail, if needed) -------------@/
@@ -157,6 +170,7 @@ template<typename Type> constexpr auto Ref<Type>::get() const -> Type* {
 	return mHeader->get();
 }
 template<typename Type> constexpr auto Ref<Type>::del() -> void {
+	SCL_ASSERT_MSG(valid(), "ref %p: attempt to delete while expired!", this);	
 	mHeader->del();
 }
 // header structure's methods ---------------------------@/
@@ -192,8 +206,8 @@ template <typename Type> class Manager {
 
 		constexpr auto size() const -> size_t { return mAliveNow; }
 		constexpr auto max_size() const -> size_t { return mAliveMax; }
-		constexpr auto totalsize_object() const -> size_t { return sizeof(Type) * mAliveMax; }
-		constexpr auto totalsize_header() const -> size_t { return sizeof(TypeHeader) * mAliveMax; }
+		constexpr auto totalsize_object() const -> size_t { return sizeof(Type) * max_size(); }
+		constexpr auto totalsize_header() const -> size_t { return sizeof(TypeHeader) * max_size(); }
 
 		// construct/destructor -------------------------@/
 		Manager() {
@@ -273,7 +287,7 @@ template <typename Type> class Manager {
 		}
 
 		// adding fns -----------------------------------------@/
-		auto del_header(TypeHeader* header) {
+		auto del_header(TypeHeader* header) -> void {
 			SCL_ASSERT_MSG(header, "pool %p: attempt to delete NULL header!", this);
 			SCL_ASSERT_MSG(header->alive(), "pool %p: attempt to delete dead header %p!", this, header);
 			
@@ -289,12 +303,12 @@ template <typename Type> class Manager {
 			mAliveNow--;
 			mIdxLast = header->mID;
 		}
-		template <typename ...Params> constexpr auto add_ref(Params&&... params) -> TypeRef {
+		template <typename ...Params> constexpr auto add_ref(Params&& ...params) -> TypeRef {
 			return TypeRef(add_header(std::forward<Params>(params)...));
 		}
-		template <typename ...Params> auto add_header(Params&&... params) -> TypeHeader* {
+		template <typename ...Params> auto add_header(Params&& ...params) -> TypeHeader* {
 			// get free object --------------------------@/
-			SCL_ASSERT_MSG(mTableObject,"pool %p: didn't setup!",this);
+			SCL_ASSERT_MSG(mDidSetup,"pool %p: didn't setup!",this);
 			SCL_ASSERT_MSG(mAliveNow != mAliveMax,"pool %p: object over!",this);
 			auto last_idx = mIdxLast;
 
