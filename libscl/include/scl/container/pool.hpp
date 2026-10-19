@@ -210,7 +210,7 @@ template <typename Type> class Manager {
 		constexpr auto totalsize_object() const -> size_t { return sizeof(Type) * max_size(); }
 		constexpr auto totalsize_header() const -> size_t { return sizeof(TypeHeader) * max_size(); }
 
-		// construct/destructor -------------------------@/
+		// con/destructor -------------------------------@/
 		Manager() {
 			mTableObject = nullptr;
 			mTableHeader = nullptr;
@@ -233,7 +233,7 @@ template <typename Type> class Manager {
 			close();
 		}
 
-		// setup fns ------------------------------------------@/
+		// setup fns ------------------------------------@/
 		auto setup_auto(size_t max) -> void {
 			if(mDidSetup) close();
 
@@ -287,7 +287,7 @@ template <typename Type> class Manager {
 			mDidSetup = false;
 		}
 
-		// adding fns -----------------------------------------@/
+		// adding fns -----------------------------------@/
 		auto del_header(TypeHeader* header) -> void {
 			SCL_ASSERT_MSG(header, "pool %p: attempt to delete NULL header!", this);
 			SCL_ASSERT_MSG(header->alive(), "pool %p: attempt to delete dead header %p!", this, header);
@@ -324,7 +324,7 @@ template <typename Type> class Manager {
 			return &header;
 		}
 
-		// list operations ------------------------------------@/
+		// list operations ------------------------------@/
 		auto get_tableAlive() -> std::vector<TypeRef> {
 			size_t limit = size();
 			std::vector<TypeRef> table;

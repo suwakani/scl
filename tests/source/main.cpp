@@ -265,5 +265,9 @@ int main(int argc, const char* argv[]) {
 	sample_sclarc::fn_pack();
 	sample_sclarc::fn_unpack();
 	sample_tasks::start();
+
+	std::cout << std::format("sizeof(void*):  {0}\n", sizeof(void*));
+	std::cout << std::format("sizeof(size_t): {0}\n", sizeof(size_t));
+	std::cout << std::format("sizeof(int):    {0}\n", sizeof(int));
 }
 

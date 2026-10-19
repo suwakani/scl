@@ -1,23 +1,43 @@
+// ==========================================================================@/
+//                                                                           @/
+// -- blob structure ------------------------------------------------------- @/
+//                                                                           @/
+// ==========================================================================@/
 #pragma once
-
+#include <scl/basis/errhandle.hpp>
 #include <bit>
 #include <cstdint>
 #include <exception>
 #include <string>
 #include <vector>
-
-#include <scl/basis/errhandle.hpp>
-
+// ------------------------------------------------------@/
 #ifdef SCL_USE_ZLIB
 #include <zlib.h>
 #endif
-
+// ------------------------------------------------------@/
 namespace scl {
+// ------------------------------------------------------@/
 
+// ==========================================================================@/
+//                                                                           @/
+// -- class ---------------------------------------------------------------- @/
+//                                                                           @/
+// ==========================================================================@/
 class Blob {
 	public:
 		std::vector<uint8_t> mData;
+		// con/destructor -------------------------------@/
+		Blob() {
+			clear();
+		}
+		Blob(const Blob& orig) {
+			mData = orig.mData;
+		}
+		Blob(const std::vector<uint8_t>& data) {
+			mData = data;
+		}
 
+		// writing --------------------------------------@/
 		auto write_blob(const Blob& source) -> Blob& {
 			mData.insert(mData.end(),source.mData.begin(),source.mData.end());
 			return *this;
@@ -30,13 +50,6 @@ class Blob {
 			mData.insert(mData.end(),src_bytes,src_bytes + len);
 			return *this;
 		}
-		constexpr auto write_u8(uint32_t n) -> void { mData.push_back(n); }
-		constexpr auto write_u16(uint32_t n) -> void { write_u8(n); write_u8(n>>8); }
-		constexpr auto write_u32(uint32_t n) -> void { write_u16(n); write_u16(n>>16); }
-		constexpr auto write_u64(uint64_t n) -> void { write_u32(n); write_u32(n>>32); }
-		constexpr auto write_be_u16(uint16_t n) -> void { write_u16(std::byteswap(n)); }
-		constexpr auto write_be_u32(uint32_t n) -> void { write_u32(std::byteswap(n)); }
-		constexpr auto write_be_u64(uint64_t n) -> void { write_u64(std::byteswap(n)); }
 		auto write_str(std::string_view str, bool no_terminator=false) -> void {
 			for(size_t i=0; i<str.size(); i++) {
 				char chr = str.at(i);
@@ -46,7 +59,15 @@ class Blob {
 				write_u8(0);
 			}
 		}
+		constexpr auto write_u8(uint32_t n) -> void { mData.push_back(n); }
+		constexpr auto write_u16(uint32_t n) -> void { write_u8(n); write_u8(n>>8); }
+		constexpr auto write_u32(uint32_t n) -> void { write_u16(n); write_u16(n>>16); }
+		constexpr auto write_u64(uint64_t n) -> void { write_u32(n); write_u32(n>>32); }
+		constexpr auto write_be_u16(uint16_t n) -> void { write_u16(std::byteswap(n)); }
+		constexpr auto write_be_u32(uint32_t n) -> void { write_u32(std::byteswap(n)); }
+		constexpr auto write_be_u64(uint64_t n) -> void { write_u64(std::byteswap(n)); }
 
+		// sizing ---------------------------------------@/
 		auto pad(int divisor, int padbyte = 0xAB) -> Blob& {
 			while((size()%divisor) != 0) {
 				write_u8(padbyte);
@@ -60,8 +81,11 @@ class Blob {
 			mData.resize(amt);
 		}
 
+		// I/O ------------------------------------------@/
 		auto file_load(const std::string& filename, bool strict=true) -> bool;
 		auto file_send(const std::string& filename, bool strict=true) const -> bool;
+
+		// compression fns ------------------------------@/
 #ifdef SCL_USE_ZLIB
 		auto compress(bool include_metadata=true, const bool do_compress=true) -> Blob {
 			std::vector<Bytef> comp_data(size()*2 + 32);
@@ -165,10 +189,14 @@ class Blob {
 			return decompress(true);
 		}
 #endif
+		
+		// access ---------------------------------------@/
+		constexpr auto size() const -> std::size_t {
+			return mData.size();
+		}
 		template<typename T=void*> auto data() -> T {
 			return reinterpret_cast<T>(mData.data());
 		}
-		constexpr auto size() const -> std::size_t { return mData.size(); }
 		constexpr auto at(const std::size_t idx) -> uint8_t& {
 			return mData.at(idx); 
 		}
@@ -176,21 +204,13 @@ class Blob {
 			return mData.at(idx); 
 		}
 
-		Blob() {
-			clear();
-		}
-		Blob(const Blob& orig) {
-			mData = orig.mData;
-		}
-		Blob(const std::vector<uint8_t>& data) {
-			mData = data;
-		}
-
+		// operators ------------------------------------@/
 		constexpr auto operator=(const Blob& other) -> Blob& {
 			mData = other.mData;
 			return *this;
 		}
 
+		// static fns -----------------------------------@/
 		static auto from_str(const std::string& str, bool no_terminator=false) -> Blob {
 			Blob strblob;
 			strblob.write_str(str,no_terminator);
@@ -203,6 +223,7 @@ class Blob {
 		}
 };
 
+// ------------------------------------------------------@/
 } // namespace scl
-
+// ------------------------------------------------------@/
 

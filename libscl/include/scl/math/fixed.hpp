@@ -1,10 +1,9 @@
 #pragma once
 
+#include <cmath>
+#include <format>
 #include <initializer_list>
 #include <numbers>
-#include <format>
-
-#include <cmath>
 
 namespace scl {
 namespace math {
@@ -125,6 +124,9 @@ template<std::size_t S = 12> class QFxi : public _QFxi_base {
 		constexpr auto safediv(const QFxi<S>& other) const -> QFxi<S> {
 			if(other == 0) return QFxi<S>(0);
 			return *this / other;
+		}
+		constexpr auto clamp(const QFxi<S>& lo, const QFxi<S>& hi) {
+			return std::clamp(*this, lo, hi);
 		}
 
 		// arithemetic operators ------------------------@/

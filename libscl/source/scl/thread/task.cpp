@@ -19,6 +19,7 @@ Unit::Unit() {
 
 	mPriority = 0;
 	mName = "UNNAMED";
+	stepFrequency_set(1, true);
 	flagShouldDel_set(false);
 	flagIsStepping_set(false);
 }
@@ -26,9 +27,10 @@ Unit::Unit(size_t priority, Callback fn, const std::string& name) {
 	mManager = nullptr;
 	mTreeChildren.clear();
 
-	mPriority = priority;
 	mCallback = fn;
+	mPriority = priority;
 	mName = name;
+	stepFrequency_set(1, true);
 	flagShouldDel_set(false);
 	flagIsStepping_set(false);
 }
@@ -36,6 +38,14 @@ Unit::~Unit() {
 }
 // ------------------------------------------------------@/
 auto Unit::step() -> void {
+	// TODO: test this more
+	mStepTimer += mStepFrequency;
+	if(mStepTimer >= 1) {
+		mStepTimer -= 1;
+	} else {
+		return;
+	}
+
 	// execute current task -----------------------------@/
 	if(!paused()) {
 		flagIsStepping_set(true);
@@ -135,12 +145,14 @@ auto Manager::unit_add(size_t priority, UnitRef parentRef, Callback fn, const st
 	return unitRef;
 }
 auto Manager::unit_del(UnitRef unit) -> void {
+	SCL_ASSERT_MSG(mDidSetup, "taskmgr %p: not initialized yet", this);
+	SCL_ASSERT_MSG(unit.valid(), "taskmgr %p: attempt to delete invalid ref!", this);
+	
+	// only set flag if currently stepping this unit ----@/
 	if(unit->flagIsStepping_get()) {
 		unit->flagShouldDel_set(true);
 		return;
 	}
-	SCL_ASSERT_MSG(mDidSetup, "taskmgr %p: not initialized yet", this);
-	SCL_ASSERT_MSG(unit.valid(), "taskmgr %p: attempt to delete invalid ref!", this);
 	
 	// remove all children of this unit, too ------------@/
 	{

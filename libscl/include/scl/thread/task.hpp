@@ -45,6 +45,8 @@ class Unit {
 		Manager* mManager;
 		uint16_t mPriority;
 		std::bitset<16> mFlags;
+		float mStepTimer;
+		float mStepFrequency;
 
 		// con/destructor -------------------------------@/
 		Unit();
@@ -70,6 +72,17 @@ class Unit {
 
 		constexpr auto name() const -> const std::string& { return mName; }
 		constexpr auto priority() const -> int { return mPriority; }
+
+		constexpr auto stepTimer_set(float tmr) -> void { mStepTimer = tmr; }
+		constexpr auto stepTimer_reset() -> void { stepTimer_set(1 - mStepFrequency); }
+		constexpr auto stepFrequency_set(float freq, bool doResetTimer = false) -> void {
+			mStepFrequency = freq;
+			if(doResetTimer) {
+				// * this is so a task always updates at least once and then
+				//   has blank steps after
+				stepTimer_reset();
+			}
+		}
 
 		// stepping -------------------------------------@/
 		auto step() -> void;
