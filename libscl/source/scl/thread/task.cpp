@@ -52,14 +52,7 @@ auto Unit::step() -> void {
 	}
 
 	// execute child tasks ------------------------------@/
-	std::vector<UnitRef> children;
-	for(auto& childRef : mTreeChildren) {
-		children.push_back(childRef);
-	}
-
-    std::sort(children.begin(), children.end(), [](UnitRef& a, UnitRef& b) {
-		return a->priority() < b->priority();
-	});
+	auto children = children_getSorted();
 
 	for(auto& childRef : children) {
 		childRef->step();
@@ -73,10 +66,11 @@ auto Unit::tostr_tree() -> std::string {
 		for(int i=0; i<depth; i++) {
 			fullstr += "    ";
 		}
-		fullstr += std::format("* [{0:02X}h] '{1:24}'", unit->priority(),unit->name());
+		fullstr += std::format("* [{0:02X}h] '{1}'", unit->priority(),unit->name());
 		fullstr += "\n";
 
-		for(auto& childRef : unit->mTreeChildren) {
+		auto children = unit->children_getSorted();
+		for(auto& childRef : children) {
 			cb(childRef,depth+1);
 		}
 	};
@@ -88,6 +82,19 @@ auto Unit::tostr_tree() -> std::string {
 auto Unit::del() -> void {
 	SCL_ASSERT_MSG(manager(), "task %p: no manager!", this);
 	manager()->unit_del(selfref());
+}
+auto Unit::children_get(bool sorted) -> std::vector<UnitRef> {
+	std::vector<UnitRef> children;
+	for(auto& childRef : mTreeChildren) {
+		children.push_back(childRef);
+	}
+
+	if(sorted) {
+		std::sort(children.begin(), children.end(), [](UnitRef& a, UnitRef& b) {
+			return a->priority() < b->priority();
+		});
+	}
+	return children;
 }
 
 // ==========================================================================@/
@@ -103,15 +110,6 @@ Manager::Manager(size_t max_tasks) {
 	mDidSetup = true;
 	mUnitPool.setup_auto(max_tasks);
 }
-Manager::~Manager() {
-	auto task_table = mUnitPool.get_tableAlive();
-	for(auto& unitRef : task_table) {
-		if(unitRef.valid()) {
-			unitRef.del();
-		}
-	}
-}
-
 // ------------------------------------------------------@/
 auto Manager::unit_add(size_t priority, UnitRef parentRef, Callback fn, const std::string& name) -> UnitRef {
 	SCL_ASSERT_MSG(mDidSetup, "taskmgr %p: not initialized yet", this);
@@ -146,11 +144,8 @@ auto Manager::unit_del(UnitRef unit) -> void {
 	
 	// remove all children of this unit, too ------------@/
 	{
-		std::vector<UnitRef> children;
-		for(auto& childRef : unit->mTreeChildren) {
-			children.push_back(childRef);
-		}
-
+		auto children = unit->children_get();
+		
 		for(auto& childRef : children) {
 			unit_del(childRef);
 		}

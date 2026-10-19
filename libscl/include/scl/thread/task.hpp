@@ -9,6 +9,7 @@
 #include <bitset>
 #include <functional>
 #include <list>
+#include <vector>
 // ------------------------------------------------------@/
 namespace scl {
 namespace task {
@@ -16,8 +17,8 @@ namespace task {
 class Unit;
 using UnitRef = scl::pool::Ref<Unit>;
 using UnitList = std::list<UnitRef>;
-class Manager;
 using Callback = std::function<void(Unit&)>;
+class Manager;
 // ------------------------------------------------------@/
 constexpr size_t PriorityMax = 16;
 // ------------------------------------------------------@/
@@ -31,7 +32,7 @@ namespace UnitFlag {
 
 // ==========================================================================@/
 //                                                                           @/
-// -- Single task unit ----------------------------------------------------- @/
+// -- single task unit ----------------------------------------------------- @/
 //                                                                           @/
 // ==========================================================================@/
 class Unit {
@@ -50,7 +51,7 @@ class Unit {
 		Unit(size_t priority, Callback fn, const std::string& name);
 		~Unit();
 
-		// modifiers ------------------------------------------@/
+		// access ---------------------------------------@/
 		constexpr auto selfref() -> UnitRef& { return mRefSelf; }
 		constexpr auto selfref_assign(const UnitRef& ref) -> void { mRefSelf = ref; }
 		constexpr auto manager() -> Manager* { return mManager; }
@@ -76,11 +77,15 @@ class Unit {
 
 		// tree -----------------------------------------@/
 		auto del() -> void;
+		auto children_get(bool sorted=false) -> std::vector<UnitRef>;
+		constexpr auto children_getSorted() -> std::vector<UnitRef> {
+			return children_get(true);
+		}
 };
 
 // ==========================================================================@/
 //                                                                           @/
-// -- Task manager --------------------------------------------------------- @/
+// -- task manager --------------------------------------------------------- @/
 //                                                                           @/
 // ==========================================================================@/
 class Manager {
@@ -88,14 +93,15 @@ class Manager {
 		scl::pool::Manager<Unit> mUnitPool;
 		bool mDidSetup;
 
-		constexpr auto size() const -> size_t { return mUnitPool.size(); }
-		constexpr auto max_size() const -> size_t { return mUnitPool.max_size(); }
-		constexpr auto totalsize_unit() const -> size_t { return mUnitPool.totalsize_object(); }
-
 		// con/destructor -------------------------------@/
 		Manager();
 		Manager(size_t max_tasks);
-		~Manager();
+		~Manager() {} // not needed, pool destructs itself
+
+		// access ---------------------------------------@/
+		constexpr auto size() const -> size_t { return mUnitPool.size(); }
+		constexpr auto max_size() const -> size_t { return mUnitPool.max_size(); }
+		constexpr auto totalsize_unit() const -> size_t { return mUnitPool.totalsize_object(); }
 
 		// tree -----------------------------------------@/
 		auto unit_add(size_t priority, UnitRef parent, Callback fn, const std::string& name) -> UnitRef;

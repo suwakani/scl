@@ -212,7 +212,7 @@ namespace sample_sclarc {
 };
 namespace sample_tasks {
 	auto start() -> void {
-		scltask::Manager taskmgr(32);
+		scltask::Manager taskmgr(64);
 
 		scltask::Callback tskfn_main = [](scltask::Unit& task) {
 			std::puts("hi... Okay");
@@ -229,11 +229,13 @@ namespace sample_tasks {
 		};
 
 		auto add_workers = [&](scltask::UnitRef& parentRef) {
+			taskmgr.unit_add(0x04, parentRef, tskfn_worker2, "worker2");
+			taskmgr.unit_add(0x02, parentRef, tskfn_worker2, "worker2");
 			taskmgr.unit_add(0x03, parentRef, tskfn_worker2, "worker2");
-			taskmgr.unit_add(0x00, parentRef, tskfn_worker, "worker");
-			taskmgr.unit_add(0x00, parentRef, tskfn_worker, "worker");
-			taskmgr.unit_add(0x00, parentRef, tskfn_worker, "worker");
-			taskmgr.unit_add(0x00, parentRef, tskfn_worker, "worker");
+			taskmgr.unit_add(0x01, parentRef, tskfn_worker, "worker");
+			taskmgr.unit_add(0x01, parentRef, tskfn_worker, "worker");
+			taskmgr.unit_add(0x01, parentRef, tskfn_worker, "worker");
+			taskmgr.unit_add(0x01, parentRef, tskfn_worker, "worker");
 		};
 
 		// prio, parent, callback, name

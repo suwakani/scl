@@ -59,9 +59,6 @@ template<typename Type> class Ref {
 			return get();
 		}
 		constexpr auto get() const -> Type*;
-		constexpr auto operator->() -> Type* {
-			return lock();
-		}
 
 		// constructors ---------------------------------------@/
 		constexpr Ref() : mLLPrev(NULL),mLLNext(NULL),mHeader(NULL) {
@@ -90,13 +87,16 @@ template<typename Type> class Ref {
 		constexpr auto operator==(const Ref<Type>& other) const -> bool {
 			return get() == other.get();
 		}
-		auto operator=(const Ref<Type>& other) -> Ref<Type>& {
+		constexpr auto operator=(const Ref<Type>& other) -> Ref<Type>& {
 			if(other.valid()) {
 				bind(other.mHeader);
 			} else {
 				unbind();
 			}
 			return *this;
+		}
+		constexpr auto operator->() -> Type* {
+			return lock();
 		}
 
 		// misc -----------------------------------------------@/
