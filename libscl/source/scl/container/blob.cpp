@@ -10,12 +10,13 @@ auto Blob::file_load(const std::string& filename, bool strict) -> bool {
 		SCL_ASSERT_MSG(!strict,"unable to load file '%s'\n",filename.c_str());
 		return false;
 	}
-	// get file size ----------------------------@/
+
+	// get file size ------------------------------------@/
 	std::fseek(file,0,SEEK_END);
 	const std::size_t fsize = std::ftell(file);
 	std::rewind(file);
 
-	// write to Blob ----------------------------@/
+	// write to Blob ------------------------------------@/
 	std::vector<uint8_t> buffer(fsize);
 	std::fread(buffer.data(),1,buffer.size(),file);
 	std::fclose(file);

@@ -54,6 +54,7 @@ template<std::size_t S = 12> class QFxi : public _QFxi_base {
 	public:
 		value_type mData;
 
+		// constructor ----------------------------------@/
 		constexpr QFxi() : mData(0) {}
 		constexpr QFxi(value_type v, int shift) : mData(v >> shift) {}
 		constexpr QFxi(int v) : mData(v * One) {}

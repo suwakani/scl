@@ -89,11 +89,11 @@ class Unit {
 		auto tostr_tree() -> std::string;
 
 		// tree -----------------------------------------@/
-		auto del() -> void;
 		auto children_get(bool sorted=false) -> std::vector<UnitRef>;
 		constexpr auto children_getSorted() -> std::vector<UnitRef> {
 			return children_get(true);
 		}
+		constexpr auto del() -> void;
 };
 
 // ==========================================================================@/
@@ -123,6 +123,11 @@ class Manager {
 			return unit_add(0, nullptr, fn, name);
 		}
 };
+// ------------------------------------------------------@/
+constexpr auto Unit::del() -> void {
+	SCL_ASSERT_MSG(manager(), "task %p: no manager!", this);
+	manager()->unit_del(selfref());
+}
 
 // ------------------------------------------------------@/
 } // namespace task

@@ -15,6 +15,8 @@ namespace math {
 template<typename T, std::size_t N = 4> class Vec {
 	public:
 		std::array<T,N> mData;
+		
+		// constructor ----------------------------------@/
 		constexpr Vec() : mData{} {}
 		template<typename ...T0> constexpr Vec(T0 ...v) : mData{v...} {}
 

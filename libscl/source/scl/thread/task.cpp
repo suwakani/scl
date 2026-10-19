@@ -89,10 +89,6 @@ auto Unit::tostr_tree() -> std::string {
 	return fullstr.substr(0,fullstr.size()-1);
 }
 // ------------------------------------------------------@/
-auto Unit::del() -> void {
-	SCL_ASSERT_MSG(manager(), "task %p: no manager!", this);
-	manager()->unit_del(selfref());
-}
 auto Unit::children_get(bool sorted) -> std::vector<UnitRef> {
 	std::vector<UnitRef> children;
 	for(auto& childRef : mTreeChildren) {
