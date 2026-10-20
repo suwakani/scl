@@ -20,13 +20,15 @@ using Vec3fxi = scl::math::Vec<Fxi,3>;
 namespace sample_objlist {
 	class CUnit {
 		public:
+			using Ref = sclpool::Ref<CUnit>;
+		public:
 			Vec3fxi mPos;
 			int32_t mHP;
 			int32_t mAlive;
-			sclpool::Ref<CUnit> mRef;
+			Ref mRef;
 			std::array<uint8_t,40> mWork;
 
-			auto ref_assign(const sclpool::Ref<CUnit>& ref) -> void {
+			auto ref_assign(const Ref& ref) -> void {
 				mRef = ref;
 				std::cout << std::format("\tref: {0}\n", mRef.to_str());
 			}
@@ -56,7 +58,7 @@ namespace sample_objlist {
 		sclpool::Manager<CUnit> objpool(64);
 
 		// creating and deleting multiple ---------------@/
-		std::vector<sclpool::Ref<CUnit>> reftable;
+		std::vector<CUnit::Ref> reftable;
 
 		for(int i=0; i<4; i++) {
 			auto objRef = objpool.add_ref();
@@ -269,5 +271,6 @@ int main(int argc, const char* argv[]) {
 	std::cout << std::format("sizeof(void*):  {0}\n", sizeof(void*));
 	std::cout << std::format("sizeof(size_t): {0}\n", sizeof(size_t));
 	std::cout << std::format("sizeof(int):    {0}\n", sizeof(int));
+
 }
 

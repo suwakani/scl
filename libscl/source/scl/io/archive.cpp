@@ -3,15 +3,14 @@
 #include <scl/container/blob.hpp>
 #include <scl/io/archive.hpp>
 
+#include <clocale>
+#include <cstring>
+#include <filesystem>
 #include <format>
 #include <functional>
 #include <iostream>
 #include <optional>
 #include <ranges>
-#include <filesystem>
-
-#include <clocale>
-#include <cstring>
 
 namespace stdfs = std::filesystem;
 
@@ -32,7 +31,7 @@ auto MetadataFolder::add_folder(MetadataFolder fldr) -> void {
 }
 
 // ==========================================================================@/
-// record                                                                    @/
+// record's file                                                             @/
 // ==========================================================================@/
 RecordFile::RecordFile(Record& record, const std::string& filename) {
 	open(record,filename);
@@ -40,6 +39,7 @@ RecordFile::RecordFile(Record& record, const std::string& filename) {
 RecordFile::~RecordFile() {
 	close();
 }
+// ------------------------------------------------------@/
 auto RecordFile::seek(int offset, int origin) -> void {
 	SCL_ASSERT_MSG(mInfoFile,"RecordFile %p: null file",this);
 
@@ -107,6 +107,9 @@ auto RecordFile::close() -> void {
 	}
 }
 
+// ==========================================================================@/
+// record info                                                               @/
+// ==========================================================================@/
 auto RecordInfo_Folder::add_file(const RecordInfo_File& file) -> void {
 	SCL_ASSERT_MSG(!mReadonly,"folder %p: tried to add file in readonly state",this);
 	mTableFile.push_back(file);
@@ -122,6 +125,9 @@ auto RecordInfo_Folder::mark_readonly() -> void {
 	}
 }
 
+// ==========================================================================@/
+// record                                                                    @/
+// ==========================================================================@/
 auto Record::file_open(const std::string& filename) -> RecordFile {
 	return RecordFile(*this,filename);
 }
@@ -175,7 +181,7 @@ auto Record::file_find(const std::string& orig_filename) -> RecordInfo_File* {
 	}
 	return NULL;
 }
-
+// ------------------------------------------------------@/
 auto Record::load_file(const std::string& src_filename, bool strict) -> void {
 	auto file = std::fopen(src_filename.c_str(),"rb");
 	SCL_ASSERT_MSG(file,"record %p: unable to open file %s",this, src_filename.c_str());
@@ -305,7 +311,7 @@ auto Record::from_file(const std::string& filename, bool strict) -> std::shared_
 	rec->load_file(filename,strict);
 	return rec;
 }
-
+// ------------------------------------------------------@/
 Record::~Record() {
 	SCL_ASSERT_MSG(!filehandle_isAny(),"Record %p: file handles are still open (%d)",
 		this,mNumFilehandles

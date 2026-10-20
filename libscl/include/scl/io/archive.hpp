@@ -25,10 +25,10 @@
 
 #include <scl/container/blob.hpp>
 
+#include <cstdio>
 #include <map>
 #include <memory>
 #include <string>
-#include <cstdio>
 
 namespace scl {
 namespace io {
@@ -55,16 +55,18 @@ class MetadataFile {
 		Hash mHashName;
 		Hash mHashFullpath;
 		
+		// con/destructor -------------------------------@/
 		MetadataFile()
 			: mName("_UNNAMED"),mSourceFilename(),mID(0),mParentID(FolderID::Null) {}
 		MetadataFile(std::string name, std::string source) 
 			: mName(name),mSourceFilename(source),mID(0),mParentID(FolderID::Null) {}
 
-		auto ID() const -> std::size_t { return mID; }
-		auto name() const -> std::string { return mName; }
-		auto source() const -> std::string { return mSourceFilename; }
-		auto hashName() const -> Hash { return mHashName; }
-		auto hashFullpath() const -> Hash { return mHashFullpath; }
+		// access ---------------------------------------@/
+		constexpr auto ID() const -> std::size_t { return mID; }
+		constexpr auto name() const -> std::string { return mName; }
+		constexpr auto source() const -> std::string { return mSourceFilename; }
+		constexpr auto hashName() const -> Hash { return mHashName; }
+		constexpr auto hashFullpath() const -> Hash { return mHashFullpath; }
 };
 class MetadataFolder {
 	public:
@@ -76,16 +78,18 @@ class MetadataFolder {
 		Hash mHashName;
 		Hash mHashFullpath;
 
+		// con/destructor -------------------------------@/
 		MetadataFolder()
 			: mFiles(),mFolders(),mID(0),mParentID(FolderID::Null) {}
 		MetadataFolder(std::string name)
 			: mName(name),mFiles(),mFolders(),mID(0),mParentID(FolderID::Null) {}
 		
-		auto name() const -> std::string { return mName; }
-		auto ID() const -> std::size_t { return mID; }
-		auto parentID() const -> std::size_t { return mParentID; }
-		auto hashName() const -> Hash { return mHashName; }
-		auto hashFullpath() const -> Hash { return mHashFullpath; }
+		// access ---------------------------------------@/
+		constexpr auto name() const -> std::string { return mName; }
+		constexpr auto ID() const -> std::size_t { return mID; }
+		constexpr auto parentID() const -> std::size_t { return mParentID; }
+		constexpr auto hashName() const -> Hash { return mHashName; }
+		constexpr auto hashFullpath() const -> Hash { return mHashFullpath; }
 
 		auto add_file(MetadataFile file) -> void;
 		auto add_folder(MetadataFolder fldr) -> void;
@@ -145,18 +149,20 @@ class RecordInfo_File {
 		std::size_t mDataLen;
 		Hash mHashName;
 		Hash mHashFullpath;
-
+		
+		// con/destructor -------------------------------@/
+		RecordInfo_File()
+			: mID(0),mParentID(FolderID::Null),mName(),mDataIdx(0),mDataLen(0) {}
+		RecordInfo_File(size_t ID, std::string name)
+			: mID(ID),mParentID(FolderID::Null),mName(name),mDataIdx(),mDataLen() {}
+		
+		// access ---------------------------------------@/
 		constexpr auto ID() const -> size_t { return mID; }
 		constexpr auto name() const -> std::string { return mName; }
 		constexpr auto data_len() const -> size_t { return mDataLen; }
 		constexpr auto data_lenMB() const -> double { return ((double)mDataLen) / (1024.0*1024.0); }
 		constexpr auto hashName() const -> Hash { return mHashName; }
 		constexpr auto hashFullpath() const -> Hash { return mHashFullpath; }
-
-		RecordInfo_File()
-			: mID(0),mParentID(FolderID::Null),mName(),mDataIdx(0),mDataLen(0) {}
-		RecordInfo_File(size_t ID, std::string name)
-			: mID(ID),mParentID(FolderID::Null),mName(name),mDataIdx(),mDataLen() {}
 };
 class RecordInfo_Folder {
 	public:
@@ -166,19 +172,22 @@ class RecordInfo_Folder {
 		std::vector<RecordInfo_File> mTableFile;
 		std::vector<RecordInfo_Folder> mTableFolder;
 		bool mReadonly;
-
-		auto add_file(const RecordInfo_File& file) -> void;
-		auto add_folder(const RecordInfo_Folder& folder) -> void;
-		auto mark_readonly() -> void;
-
-		constexpr auto ID() const -> size_t { return mID; }
-		constexpr auto parentID() const -> size_t { return mParentID; }
-		constexpr auto name() const -> std::string { return mName; }
-
+		
+		// con/destructor -------------------------------@/
 		RecordInfo_Folder()
 			: mID(FolderID::Null),mParentID(FolderID::Null),mReadonly(false) {}
 		RecordInfo_Folder(size_t ID, std::string name)
 			: mID(ID),mParentID(FolderID::Null),mName(name),mReadonly(false) {}
+
+		// tree -----------------------------------------@/
+		auto add_file(const RecordInfo_File& file) -> void;
+		auto add_folder(const RecordInfo_Folder& folder) -> void;
+		auto mark_readonly() -> void;
+
+		// access ---------------------------------------@/
+		constexpr auto ID() const -> size_t { return mID; }
+		constexpr auto parentID() const -> size_t { return mParentID; }
+		constexpr auto name() const -> std::string { return mName; }
 };
 class RecordFile {
 	public:
@@ -187,12 +196,19 @@ class RecordFile {
 		std::FILE* hFile;
 		std::size_t mOffset;
 
+		// con/destructor -------------------------------@/
+		RecordFile() : mRecordCurrent(NULL),mInfoFile(NULL),hFile(NULL),mOffset(0) {}
+		RecordFile(Record& record, const std::string& filename);
+		~RecordFile();
+
+		// I/O ------------------------------------------@/
 		auto seek(int offset, int origin = SEEK_SET) -> void;
 		auto read(size_t len) -> scl::Blob;
 		auto read(void* output, size_t len) -> void;
 		auto close() -> void;
 		auto open(Record& record, const std::string& filename) -> void;
 
+		// access ---------------------------------------@/
 		constexpr auto tell() -> size_t { return mOffset; }
 		constexpr auto filesize() const -> size_t {
 			SCL_ASSERT_MSG(mInfoFile,"Record %p: no file",this);
@@ -202,11 +218,6 @@ class RecordFile {
 			SCL_ASSERT_MSG(mInfoFile,"Record %p: no file",this);
 			return mInfoFile->name();
 		}
-
-		RecordFile() 
-			: mRecordCurrent(NULL),mInfoFile(NULL),hFile(NULL),mOffset(0) {}
-		RecordFile(Record& record, const std::string& filename);
-		~RecordFile();
 };
 
 class Record {
@@ -220,18 +231,20 @@ class Record {
 		std::size_t mFiledataOffset;
 		int mNumFilehandles;
 
-		static auto from_file(const std::string& filename, bool strict=true) -> std::shared_ptr<Record>;
+		// con/destructor -------------------------------@/
+		Record() : mFolderCurrent(NULL),mNumFilehandles(0) {}
+		~Record();
 
+		// I/O ------------------------------------------@/
+		static auto from_file(const std::string& filename, bool strict=true) -> std::shared_ptr<Record>;
 		auto load_file(const std::string& src_filename, bool strict=true) -> void;
 		auto file_open(const std::string& filename) -> RecordFile;
 		auto file_find(const std::string& filename) -> RecordInfo_File*;
 
+		// handles --------------------------------------@/
 		constexpr auto filehandle_add() -> void { mNumFilehandles += 1; }
 		constexpr auto filehandle_sub() -> void { mNumFilehandles -= 1; }
 		constexpr auto filehandle_isAny() -> bool { return mNumFilehandles > 0; }
-
-		Record() : mFolderCurrent(NULL),mNumFilehandles(0) {}
-		~Record();
 };
 
 // ==========================================================================@/
