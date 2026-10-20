@@ -137,6 +137,7 @@ template<typename Type> auto Ref<Type>::bind(Header<Type>* header) -> void {
 	*/
 	SCL_ASSERT_MSG(header, "ref %p: bind to null!", this);
 	SCL_ASSERT_MSG(header->alive(), "ref %p: bind to dead pool entry!", this);
+	SCL_ASSERT_MSG(header ~= mHeader, "double-bind!");
 	if(valid()) unbind();
 	mHeader = header;
 
