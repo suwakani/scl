@@ -108,7 +108,7 @@ template<typename Type> class Ref {
 };
 template<typename Type> class Header {
 	public:
-		uint32_t mAlive;
+		uint16_t mAlive;
 		uint16_t mID,mIDNext;
 		Manager<Type>* mManager;
 		Ref<Type>* mReflistTail;
@@ -126,18 +126,19 @@ template<typename Type> class Header {
 		Header() : mAlive(false),mID(0),mIDNext(0),
 			mManager(NULL),mReflistTail(NULL) {}
 };
+
 // reference structure's methods ------------------------@/
 template<typename Type> auto Ref<Type>::bind(Header<Type>* header) -> void {
 	/*
-		* we should NOT be able to bind a reference twice to the same object.
-		* we should also only be able to bind if not expired. if this ref is
-		  already binded, it should unbind before re-binding. this also deals
-		  with double-binding (binding again to the same header) in the
-		  process.
+		* we should only be able to bind if not expired. if this ref is already
+		  binded, it should unbind before re-binding. this also deals with
+		  double-binding (binding again to the same header) in the process.
+		* if we ever attempt to double-bind, we ignore the bind entirely, just
+		  to not waste any cpu binding.
 	*/
 	SCL_ASSERT_MSG(header, "ref %p: bind to null!", this);
 	SCL_ASSERT_MSG(header->alive(), "ref %p: bind to dead pool entry!", this);
-	SCL_ASSERT_MSG(header ~= mHeader, "double-bind!");
+	if(header == mHeader) return;
 	if(valid()) unbind();
 	mHeader = header;
 
@@ -175,6 +176,7 @@ template<typename Type> constexpr auto Ref<Type>::del() -> void {
 	SCL_ASSERT_MSG(valid(), "ref %p: attempt to delete while expired!", this);	
 	mHeader->del();
 }
+
 // header structure's methods ---------------------------@/
 template<typename Type> constexpr auto Header<Type>::get() const -> Type* {
 	return &mManager->mTableObject[mID];
@@ -342,7 +344,11 @@ template <typename Type> class Manager {
 	private:
 		auto setup() -> void {
 			SCL_ASSERT_MSG(mAliveMax>0, "pool %p: max alive must be > 0",this);
-			SCL_ASSERT_MSG(mAliveMax<=65535, "pool %p: max alive must be < 65536", this);
+			if(sizeof(TypeHeader::mID) == 2) {
+				SCL_ASSERT_MSG(mAliveMax<=0xFFFF, "pool %p: max alive must be <= 65535", this);
+			} else {
+				SCL_ASSERT_MSG(mAliveMax<=0xFFFF'FFFF, "pool %p: max alive must be < 2^32", this);
+			}
 			SCL_ASSERT_MSG(mAliveNow==0, "pool %p: num. alive must be 0",this);
 
 			if(mAutoEnable) {
@@ -353,12 +359,12 @@ template <typename Type> class Manager {
 			for(size_t i=0; i<mAliveMax; i++) {
 				auto &header = mTableHeader[i];
 				header.mAlive = false;
-				header.mID = i & 0xFFFF;
-				header.mIDNext = (i+1) & 0xFFFF;
+				header.mID = i;
+				header.mIDNext = i+1;
 				header.mManager = this;
 				header.mReflistTail = nullptr;
 			}
-			mTableHeader[mAliveMax-1].mID = 0xFFFF;
+			mTableHeader[mAliveMax-1].mID = -1;
 		}
 };
 

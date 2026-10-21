@@ -125,10 +125,14 @@ class Blob {
 
 			Blob comp_blob;
 			if(include_metadata) {
-				// 4 bytes for magic, 4 bytes for original size, 4 bytes for
-				// packed size
+				/*
+					* 4 bytes for magic
+					* 4 for version ID
+					* 8 bytes for original size
+					* 8 bytes for packed size
+				*/
 				comp_blob.write_str("SBL");
-				comp_blob.pad(8);
+				comp_blob.write_u32(0);
 				comp_blob.write_u64(size());
 				comp_blob.write_u64(zlstrm.total_out);
 			}
@@ -157,6 +161,8 @@ class Blob {
 
 			if(include_metadata) {
 				if(size() <= 24) {
+					// it's <= because a compressed chunk wouldn't be
+					// 0 bytes; there'd be a tiny header left over
 					puts("blob::decompress(): invalid metadata!");
 					std::terminate();
 				}
