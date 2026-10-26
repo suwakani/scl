@@ -364,7 +364,7 @@ template <typename Type> class Manager {
 				header.mManager = this;
 				header.mReflistTail = nullptr;
 			}
-			mTableHeader[mAliveMax-1].mID = -1;
+			mTableHeader[mAliveMax-1].mIDNext = -1;
 		}
 };
 
