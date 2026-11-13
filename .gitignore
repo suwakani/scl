@@ -13,4 +13,5 @@ libscl/**/*.d
 libscl/workdata/*
 !libscl/**/.gitkeep
 !libscl/build/**/.gitkeep
+!libscl/build/**/**/.gitkeep
 
